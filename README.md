@@ -21,6 +21,10 @@ Supabase project **"wedding bets"** (ref `etojeszmiwfgncokrsay`):
   room-code-gated at the app level).
 - Tables: `rooms`, `players`, `props`, `picks` (public schema), all published
   to Supabase Realtime so picks, settlements, and standings sync live.
+- `props.locks_at` (nullable timestamptz) carries a per-prop betting deadline.
+  The `picks` table's INSERT/UPDATE policies reject writes for a prop whose
+  `locks_at` is in the past — that's the real enforcement; the app mirrors the
+  lock state in its UI and handles a rejection gracefully.
 
 ## Deploy (Netlify)
 
@@ -46,5 +50,24 @@ Supabase project **"wedding bets"** (ref `etojeszmiwfgncokrsay`):
 - **Guests:** Open the link (or enter the code) + your name. Pick Yes/No and a
   stake on each moment before it's settled. Everyone starts at 100 points;
   win your stake when you call it right, lose it when you don't.
+- **Betting deadlines (host):** The "⏰ Betting deadlines" panel sets a lock
+  time per category (Getting Ready, First Look, Ceremony, Portraits,
+  Reception, plus any custom categories). Setting one writes `locks_at` to
+  every prop in that category. Props show "🔒 Locks 3:30 PM" while betting is
+  open; once the time passes the card flips to "🔒 Betting closed" (existing
+  picks stay visible, controls disappear) — the app re-checks every 30
+  seconds, so locks engage on their own. Hosts can still settle locked
+  moments, and can change or clear a deadline anytime. A custom prop added to
+  a category inherits that category's deadline.
+- **Game log & stats (host):** A collapsible "📊 Game log & stats" section
+  shows the room totals (picks placed, points wagered, moments settled,
+  showdowns), a per-player table (picks, W–L, win %, net points, current
+  points), and a full bet log — every pick, newest first, with side, stake,
+  time placed, and its result once settled.
 - Identity is kept in the browser (localStorage), so a refresh drops you
-  right back into your seat.
+  right back into your seat. **Leave room** fully clears that saved seat (via
+  an in-app confirm — native `confirm()` dialogs can be auto-dismissed or
+  suppressed in some browsers/webviews, which used to silently swallow the
+  leave action). And if an invite link (`?room=CODE`) names a different room
+  than the saved seat, the invite wins: you land on the join form with the new
+  code prefilled instead of being auto-rejoined to the old room.

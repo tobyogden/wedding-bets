@@ -47,6 +47,11 @@
     background:#170b2c;color:var(--ink);font-size:1.05rem;outline:none;
   }
   input[type=text]:focus{border-color:var(--gold)}
+  input[type=datetime-local]{
+    padding:11px 12px;border-radius:10px;border:1px solid var(--line);
+    background:#170b2c;color:var(--ink);font-size:.95rem;outline:none;color-scheme:dark;
+  }
+  input[type=datetime-local]:focus{border-color:var(--gold)}
   input.code{text-transform:uppercase;letter-spacing:.35em;font-weight:800;text-align:center;font-size:1.3rem}
   button{
     font:inherit;cursor:pointer;border:none;border-radius:12px;padding:13px 16px;
@@ -129,6 +134,46 @@
   }
   .outcome-yes{background:rgba(52,211,153,.18);color:var(--yes);border:1px solid var(--yes)}
   .outcome-no{background:rgba(251,113,133,.15);color:var(--no);border:1px solid var(--no)}
+  .lock-line{color:var(--dim);font-size:.82rem;margin:-4px 0 10px}
+  .locked-badge{
+    display:block;text-align:center;border-radius:12px;padding:11px;font-weight:800;font-size:.95rem;
+    background:rgba(245,196,81,.1);color:var(--gold2);border:1px dashed var(--gold);margin-top:4px;
+  }
+
+  /* Betting deadlines panel (host) */
+  .deadline-row{border-top:1px dashed var(--line);padding:12px 0 4px}
+  .deadline-row:first-of-type{border-top:none;padding-top:4px}
+  .deadline-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .deadline-cat{font-weight:800;font-size:.98rem}
+  .deadline-cur{color:var(--gold2);font-size:.85rem;font-weight:700}
+  .deadline-cur.none{color:var(--dim);font-weight:400}
+  .deadline-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch}
+  .deadline-controls input[type=datetime-local]{flex:1;min-width:180px}
+
+  /* Game log & stats (host) */
+  .stats-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+  .stats-chev{color:var(--gold);font-size:1.1rem;font-weight:900}
+  .stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 4px}
+  .stat-box{background:#1a0d30;border:1px solid var(--line);border-radius:12px;padding:10px 4px;text-align:center}
+  .stat-val{font-weight:900;font-size:1.15rem;color:var(--gold2)}
+  .stat-lab{font-size:.66rem;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+  .stats-sub{font-size:.78rem;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 6px;font-weight:800}
+  .host-tag{color:var(--gold);font-size:.72rem;font-weight:800;letter-spacing:.05em;margin-left:6px}
+  .pstat-row{display:flex;align-items:baseline;gap:10px;padding:7px 2px;border-bottom:1px dashed var(--line)}
+  .pstat-row:last-child{border-bottom:none}
+  .pstat-name{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pstat-nums{flex:1;text-align:right;font-size:.85rem;color:var(--dim)}
+  .pstat-nums b{color:var(--ink)}
+  .log-row{display:flex;gap:10px;padding:8px 2px;border-bottom:1px dashed var(--line)}
+  .log-row:last-child{border-bottom:none}
+  .log-main{flex:1;font-size:.9rem;min-width:0}
+  .log-main .stake{color:var(--gold2);font-weight:700}
+  .log-prop{color:var(--dim);font-size:.84rem}
+  .log-side{text-align:right;font-size:.85rem;white-space:nowrap}
+  .log-time{color:var(--dim);font-size:.78rem}
+  .win{color:var(--yes);font-weight:800}
+  .lose{color:var(--no);font-weight:800}
+  .log-open{color:var(--dim);font-style:italic}
 
   .pick-controls{border-top:1px dashed var(--line);padding-top:12px;margin-top:4px}
   .pick-label{font-size:.78rem;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
@@ -222,6 +267,17 @@
   <button class="btn-gold" data-act="qr-close" style="width:auto;padding-left:28px;padding-right:28px">Done</button>
 </div>
 
+<!-- LEAVE CONFIRM (in-app modal — native confirm() gets auto-dismissed/suppressed in
+     some browsers and webviews, which used to silently swallow the whole leave action) -->
+<div id="leave-overlay" class="qr-overlay hidden">
+  <p class="ov-title">Leave this room? 🚪</p>
+  <p class="ov-sub">You can rejoin with the code anytime,<br>but you'll come back as a new player.</p>
+  <div class="row-btns">
+    <button class="btn-ghost" data-act="leave-cancel" style="padding-left:26px;padding-right:26px">Stay</button>
+    <button class="btn-pink" data-act="leave-confirm" style="width:auto;padding-left:26px;padding-right:26px">Leave room</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -264,6 +320,9 @@ let players = [];       // all players in room
 let props = [];         // all props in room
 let picks = [];         // all picks in room
 let sel = {};           // propId -> {choice, stake} my unsaved/working selection
+let deadlineInputs = {}; // categoryKey -> raw datetime-local string the host has typed (survives re-renders)
+let lockedRendered = new Set(); // propIds last rendered in the locked state (drives the 30s lock-flip check)
+let statsOpen = false;  // host game log & stats section collapsed/expanded
 let channel = null;
 let refreshTimer = null;
 
@@ -310,6 +369,56 @@ function playerPoints(playerId) {
   return pts;
 }
 function anySettled() { return props.some((p) => p.outcome !== null && p.outcome !== undefined); }
+
+/* ================= BETTING DEADLINES ================= */
+const NO_CAT_KEY = "__nocat__"; // sentinel key for props with no category
+
+/* True when a prop's betting deadline exists and has passed (per this device's clock).
+   The database policies are the real enforcement; this drives the UI only. */
+function propLocked(prop) {
+  return !!(prop.locks_at && new Date(prop.locks_at).getTime() <= Date.now());
+}
+
+/* "3:30 PM" — or "Sat 3:30 PM" when the lock isn't today. Always viewer-local. */
+function fmtLockTime(iso) {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const now = new Date();
+  const sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  return sameDay ? time : d.toLocaleDateString([], { weekday: "short" }) + " " + time;
+}
+
+/* Format an ISO timestamp as a datetime-local input value in the viewer's local time. */
+function toLocalInputValue(iso) {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate())
+    + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
+
+/* Props grouped by category, standard categories first, custom ones after,
+   uncategorized last — the same order the board renders in. */
+function categoryGroups() {
+  const order = [...CATEGORY_ORDER];
+  for (const p of props) if (p.category && !order.includes(p.category)) order.push(p.category);
+  const groups = [];
+  for (const cat of order) {
+    const list = props.filter((p) => p.category === cat);
+    if (list.length) groups.push({ key: cat, label: cat, list });
+  }
+  const noCat = props.filter((p) => !p.category);
+  if (noCat.length) groups.push({ key: NO_CAT_KEY, label: "More moments", list: noCat });
+  return groups;
+}
+
+/* A category's current lock: the earliest non-null locks_at among its props, or null. */
+function categoryLock(list) {
+  let best = null;
+  for (const p of list) {
+    if (p.locks_at && (!best || p.locks_at < best)) best = p.locks_at;
+  }
+  return best;
+}
 
 /* ================= DATA ================= */
 async function fetchRoomData() {
@@ -361,6 +470,20 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && room && me) scheduleRefresh();
 });
 
+/* Deadlines engage on the clock, not on data changes — re-check every 30s and flip any
+   prop whose lock time has just passed into its locked state, no refresh needed. */
+setInterval(() => {
+  if (!room || !me) return;
+  const now = Date.now();
+  const flipped = props.some((p) =>
+    (p.outcome === null || p.outcome === undefined) &&
+    p.locks_at &&
+    new Date(p.locks_at).getTime() <= now &&
+    !lockedRendered.has(p.id)
+  );
+  if (flipped) renderRoom(true);
+}, 30000);
+
 /* ================= RENDERING ================= */
 function myPick(propId) { return picks.find((k) => k.prop_id === propId && k.player_id === me.id) || null; }
 
@@ -393,12 +516,18 @@ function sideList(prop, choiceVal) {
 
 function renderProp(prop) {
   const settled = prop.outcome !== null && prop.outcome !== undefined;
+  const locked = !settled && propLocked(prop);
+  if (locked) lockedRendered.add(prop.id); else lockedRendered.delete(prop.id);
   const s = getSel(prop);
   const existing = myPick(prop.id);
   const dirty = !existing || existing.choice !== s.choice || existing.stake !== s.stake;
 
   let html = '<div class="card" data-prop="' + prop.id + '">';
   html += '<p class="prop-q">' + esc(prop.label) + "</p>";
+
+  if (!settled && prop.locks_at && !locked) {
+    html += '<div class="lock-line">🔒 Locks ' + esc(fmtLockTime(prop.locks_at)) + " — get your pick in before then</div>";
+  }
 
   if (settled) {
     html += prop.outcome
@@ -411,7 +540,9 @@ function renderProp(prop) {
   html += '<div class="side no"><div class="side-label">No — it won\'t</div><div class="who">' + sideList(prop, false) + "</div></div>";
   html += "</div>";
 
-  if (!settled) {
+  if (locked) {
+    html += '<div class="locked-badge">🔒 Betting closed</div>';
+  } else if (!settled) {
     html += '<div class="pick-controls">';
     html += '<div class="pick-label">Your call' + (existing ? ' — saved, tap Save to change it' : "") + "</div>";
     html += '<div class="toggle-row">';
@@ -470,6 +601,30 @@ function renderRoom(preserveScroll) {
   html += '<button class="btn-ghost btn-small" data-act="leave">🚪 Leave room</button>';
   html += "</div></div>";
 
+  /* Host: betting deadlines */
+  if (me.is_host && props.length) {
+    html += '<div class="card"><h3>⏰ Betting deadlines</h3>';
+    html += '<p class="sub">Set a lock time per category — once it passes, nobody can place or change picks in that category (the board locks it for real). You can still settle moments, and you can change or clear a deadline anytime.</p>';
+    for (const g of categoryGroups()) {
+      const lockIso = categoryLock(g.list);
+      const inputVal = deadlineInputs[g.key] !== undefined
+        ? deadlineInputs[g.key]
+        : (lockIso ? toLocalInputValue(lockIso) : "");
+      html += '<div class="deadline-row">';
+      html += '<div class="deadline-head"><span class="deadline-cat">' + esc(g.label) + "</span>"
+        + (lockIso
+          ? '<span class="deadline-cur">🔒 Locks ' + esc(fmtLockTime(lockIso)) + "</span>"
+          : '<span class="deadline-cur none">No lock set</span>')
+        + "</div>";
+      html += '<div class="deadline-controls">';
+      html += '<input type="datetime-local" class="deadline-input" data-cat="' + esc(g.key) + '" value="' + esc(inputVal) + '">';
+      html += '<button class="btn-gold btn-small" data-act="set-lock" data-cat="' + esc(g.key) + '">Set lock</button>';
+      html += '<button class="btn-ghost btn-small" data-act="clear-lock" data-cat="' + esc(g.key) + '"' + (lockIso ? "" : " disabled") + ">Clear</button>";
+      html += "</div></div>";
+    }
+    html += "</div>";
+  }
+
   /* Standings */
   html += '<div class="card"><h3>🏆 Standings</h3>';
   if (!standings.length) {
@@ -486,18 +641,9 @@ function renderRoom(preserveScroll) {
   html += '<p class="sub" style="margin:8px 0 0">Everyone starts at 100. Win your stake when you call it right, lose it when you don\'t.</p></div>';
 
   /* Props by category */
-  const cats = [...CATEGORY_ORDER];
-  for (const p of props) if (p.category && !cats.includes(p.category)) cats.push(p.category);
-  const noCat = props.filter((p) => !p.category);
-  for (const cat of cats) {
-    const inCat = props.filter((p) => p.category === cat);
-    if (!inCat.length) continue;
-    html += '<div class="cat-title">' + esc(cat) + "</div>";
-    for (const p of inCat) html += renderProp(p);
-  }
-  if (noCat.length) {
-    html += '<div class="cat-title">More moments</div>';
-    for (const p of noCat) html += renderProp(p);
+  for (const g of categoryGroups()) {
+    html += '<div class="cat-title">' + esc(g.label) + "</div>";
+    for (const p of g.list) html += renderProp(p);
   }
   if (!props.length) html += '<div class="card"><p class="sub" style="margin:0">No moments on the board yet.</p></div>';
 
@@ -513,12 +659,119 @@ function renderRoom(preserveScroll) {
     html += '<button class="btn-gold" data-act="add-prop">Add to the board →</button></div>';
   }
 
+  /* Host: game log & stats */
+  if (me.is_host) html += renderStats();
+
   html += '<p class="foot-note">Points are for glory. Glory is forever. 💅</p>';
 
   $("view-room").innerHTML = html;
   showView("room");
   renderQR();
   if (preserveScroll) window.scrollTo(0, y);
+}
+
+/* ================= GAME LOG & STATS (host only) =================
+   Everything derives from the players/props/picks state the room already
+   fetches (picks include created_at) — no extra queries, and it stays live
+   because renderRoom re-runs on every refresh. */
+function computeStats() {
+  const totalPicks = picks.length;
+  const totalWagered = picks.reduce((sum, k) => sum + (k.stake || 0), 0);
+  const settledCount = props.filter((p) => p.outcome !== null && p.outcome !== undefined).length;
+  let showdowns = 0;
+  for (const p of props) {
+    const hasYes = picks.some((k) => k.prop_id === p.id && k.choice === true);
+    const hasNo = picks.some((k) => k.prop_id === p.id && k.choice === false);
+    if (hasYes && hasNo) showdowns++;
+  }
+  const perPlayer = players.map((pl) => {
+    let made = 0, wins = 0, losses = 0, net = 0;
+    for (const k of picks) {
+      if (k.player_id !== pl.id) continue;
+      made++;
+      const prop = props.find((p) => p.id === k.prop_id);
+      if (!prop || prop.outcome === null || prop.outcome === undefined) continue;
+      if (k.choice === prop.outcome) { wins++; net += k.stake; }
+      else { losses++; net -= k.stake; }
+    }
+    const decided = wins + losses;
+    return {
+      pl, made, wins, losses, net,
+      winPct: decided ? Math.round((wins / decided) * 100) : null,
+      pts: playerPoints(pl.id)
+    };
+  }).sort((a, b) => b.pts - a.pts || a.pl.name.localeCompare(b.pl.name));
+  const log = [...picks].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return { totalPicks, totalWagered, settledCount, showdowns, perPlayer, log };
+}
+
+function statBox(val, label) {
+  return '<div class="stat-box"><div class="stat-val">' + esc(String(val))
+    + '</div><div class="stat-lab">' + esc(label) + "</div></div>";
+}
+
+function renderStats() {
+  let html = '<div class="card">';
+  html += '<div class="stats-head" data-act="toggle-stats" role="button">'
+    + '<h3 style="margin:0">📊 Game log &amp; stats</h3>'
+    + '<span class="stats-chev">' + (statsOpen ? "▾" : "▸") + "</span></div>";
+  if (!statsOpen) { html += "</div>"; return html; }
+
+  const st = computeStats();
+
+  /* Room summary strip */
+  html += '<div class="stats-strip">';
+  html += statBox(st.totalPicks, "picks placed");
+  html += statBox(st.totalWagered, "points wagered");
+  html += statBox(st.settledCount + "/" + props.length, "moments settled");
+  html += statBox(st.showdowns, "showdowns");
+  html += "</div>";
+
+  /* Player stats */
+  html += '<div class="stats-sub">Player stats</div>';
+  if (!st.perPlayer.length) html += '<p class="sub" style="margin:0">No players yet.</p>';
+  for (const r of st.perPlayer) {
+    const netCls = r.net > 0 ? "pts-up" : r.net < 0 ? "pts-down" : "pts-flat";
+    html += '<div class="pstat-row"><div class="pstat-name">' + esc(r.pl.name)
+      + (r.pl.is_host ? '<span class="host-tag">HOST</span>' : "")
+      + '</div><div class="pstat-nums">'
+      + r.made + " picks · " + r.wins + "W–" + r.losses + "L · "
+      + (r.winPct === null ? "—" : r.winPct + "%")
+      + ' · net <span class="' + netCls + '">' + (r.net > 0 ? "+" : "") + r.net + "</span>"
+      + " · <b>" + r.pts + " pts</b></div></div>";
+  }
+
+  /* Full bet log, newest first */
+  html += '<div class="stats-sub">Bet log</div>';
+  if (!st.log.length) html += '<p class="sub" style="margin:0">No picks yet — the board is quiet.</p>';
+  for (const k of st.log) {
+    const pl = players.find((p) => p.id === k.player_id);
+    const prop = props.find((p) => p.id === k.prop_id);
+    const name = pl ? esc(pl.name) : "Someone";
+    let label = prop ? prop.label : "(moment no longer on the board)";
+    if (label.length > 60) label = label.slice(0, 57) + "…";
+    const when = k.created_at
+      ? new Date(k.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      : "";
+    let result;
+    if (prop && prop.outcome !== null && prop.outcome !== undefined) {
+      result = (k.choice === prop.outcome)
+        ? '<span class="win">+' + k.stake + " won</span>"
+        : '<span class="lose">−' + k.stake + " lost</span>";
+    } else {
+      result = '<span class="log-open">open</span>';
+    }
+    html += '<div class="log-row"><div class="log-main"><b>' + name + "</b> · "
+      + (k.choice ? "👍 Yes" : "👎 No")
+      + ' <span class="stake">· ' + k.stake + " pts</span>"
+      + '<br><span class="log-prop">' + esc(label) + "</span></div>"
+      + '<div class="log-side">'
+      + (when ? '<div class="log-time">' + esc(when) + "</div>" : "")
+      + "<div>" + result + "</div></div></div>";
+  }
+
+  html += "</div>";
+  return html;
 }
 
 /* ================= QR SHARE ================= */
@@ -578,19 +831,58 @@ function openQR() {
 }
 function closeQR() { $("qr-overlay").classList.add("hidden"); }
 
+/* ================= LEAVE ================= */
+function openLeave() { $("leave-overlay").classList.remove("hidden"); }
+function closeLeave() { $("leave-overlay").classList.add("hidden"); }
+
+function doLeave() {
+  /* Order matters: null the in-memory identity FIRST (saveIdentity() no-ops without
+     room+me, so nothing can re-save the session during teardown), then wipe the stored
+     session, tear down, and hard-navigate to the bare path — so neither the saved
+     session nor a ?room= invite link in the URL can pull us back into the room. */
+  const ch = channel;
+  channel = null;
+  room = null; me = null; players = []; props = []; picks = []; sel = {};
+  deadlineInputs = {}; lockedRendered = new Set(); statsOpen = false;
+  clearIdentity();
+  closeLeave();
+  closeQR();
+  if (ch) { try { sb.removeChannel(ch); } catch (e) { /* already gone */ } }
+  location.replace(location.pathname);
+}
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeQR();
+  if (e.key === "Escape") { closeQR(); closeLeave(); }
 });
 
 /* ================= ACTIONS ================= */
 async function savePick(propId) {
   const s = sel[propId];
   if (!s) return;
+  const prop = props.find((p) => p.id === propId);
+  const isUnsettled = prop && (prop.outcome === null || prop.outcome === undefined);
+  /* Deadline already passed on this device — don't even send it; the DB would refuse. */
+  if (isUnsettled && propLocked(prop)) {
+    toast("Betting just closed on that one! 🔒", true);
+    scheduleRefresh();
+    return;
+  }
   const { error } = await sb.from("picks").upsert(
     { room_id: room.id, player_id: me.id, prop_id: propId, choice: s.choice, stake: s.stake },
     { onConflict: "player_id,prop_id" }
   );
-  if (error) { toast("Couldn't save that pick — try again.", true); return; }
+  if (error) {
+    /* 42501 = row-level security rejection: the picks policy refused the write because
+       the prop's locks_at just passed (the server clock is the real referee). Resync so
+       the card flips to its locked state, and keep the message friendly. */
+    if (error.code === "42501" || (prop && propLocked(prop))) {
+      toast("Betting just closed on that one! 🔒", true);
+      scheduleRefresh();
+      return;
+    }
+    toast("Couldn't save that pick — try again.", true);
+    return;
+  }
   toast("Pick locked in! 🎲");
   scheduleRefresh();
 }
@@ -609,14 +901,65 @@ async function unsettleProp(propId) {
   scheduleRefresh();
 }
 
+/* ================= BETTING DEADLINE ACTIONS (host) ================= */
+/* The room re-renders on every realtime refresh, which would wipe a half-typed
+   deadline — so mirror the host's input into deadlineInputs as they type. */
+function noteDeadlineInput(e) {
+  const inp = e.target && e.target.closest ? e.target.closest(".deadline-input") : null;
+  if (inp) deadlineInputs[inp.dataset.cat] = inp.value;
+}
+document.addEventListener("input", noteDeadlineInput);
+document.addEventListener("change", noteDeadlineInput);
+
+function lockUpdate(catKey, value) {
+  let q = sb.from("props").update({ locks_at: value }).eq("room_id", room.id);
+  q = (catKey === NO_CAT_KEY) ? q.is("category", null) : q.eq("category", catKey);
+  return q;
+}
+
+async function setCategoryLock(btn, catKey) {
+  const row = btn.closest(".deadline-row");
+  const inp = row ? row.querySelector(".deadline-input") : null;
+  const val = inp ? inp.value : (deadlineInputs[catKey] || "");
+  if (!val) { toast("Pick a date & time for the lock first.", true); if (inp) inp.focus(); return; }
+  const when = new Date(val); // datetime-local parses in the viewer's local time
+  if (isNaN(when.getTime())) { toast("That time didn't parse — try again.", true); return; }
+  const g = categoryGroups().find((x) => x.key === catKey);
+  const label = g ? g.label : "That category";
+  const { error } = await lockUpdate(catKey, when.toISOString());
+  if (error) { toast("Couldn't set that deadline — try again.", true); return; }
+  deadlineInputs[catKey] = val;
+  toast("🔒 " + label + " bets lock at " + fmtLockTime(when.toISOString()));
+  scheduleRefresh();
+}
+
+async function clearCategoryLock(catKey) {
+  const g = categoryGroups().find((x) => x.key === catKey);
+  const label = g ? g.label : "That category";
+  const { error } = await lockUpdate(catKey, null);
+  if (error) { toast("Couldn't clear that deadline — try again.", true); return; }
+  deadlineInputs[catKey] = "";
+  toast("🔓 " + label + " deadline cleared — betting stays open.");
+  scheduleRefresh();
+}
+
 async function addCustomProp() {
   const labelEl = $("custom-label"), catEl = $("custom-cat");
   const label = labelEl.value.trim();
   if (!label) { toast("Give the moment a name first.", true); labelEl.focus(); return; }
   const category = catEl.value.trim() || "Reception";
-  const { error } = await sb.from("props").insert({ room_id: room.id, label, category });
+  /* If this category already carries a betting deadline, the new prop inherits it —
+     otherwise a late custom prop would be an end-run around the lock. */
+  const donor = props.find((p) => p.category === category && p.locks_at);
+  const row = { room_id: room.id, label, category };
+  if (donor) row.locks_at = donor.locks_at;
+  const { error } = await sb.from("props").insert(row);
   if (error) { toast("Couldn't add that moment — try again.", true); return; }
-  toast("New moment on the board! ✨");
+  if (donor && propLocked(row)) {
+    toast("New moment added — heads up, that category's betting is already locked 🔒");
+  } else {
+    toast("New moment on the board! ✨");
+  }
   scheduleRefresh();
 }
 
@@ -656,13 +999,19 @@ document.addEventListener("click", (e) => {
     } else {
       toast("Share code " + room.code + " — that's all they need!");
     }
+  } else if (act === "set-lock") {
+    setCategoryLock(btn, btn.dataset.cat);
+  } else if (act === "clear-lock") {
+    clearCategoryLock(btn.dataset.cat);
+  } else if (act === "toggle-stats") {
+    statsOpen = !statsOpen;
+    renderRoom(true);
   } else if (act === "leave") {
-    if (confirm("Leave this room? You can rejoin with the code, but you'll come back as a new player.")) {
-      clearIdentity();
-      if (channel) { sb.removeChannel(channel); channel = null; }
-      room = null; me = null; players = []; props = []; picks = []; sel = {};
-      location.href = location.pathname; // drop ?room param
-    }
+    openLeave();
+  } else if (act === "leave-cancel") {
+    closeLeave();
+  } else if (act === "leave-confirm") {
+    doLeave();
   }
 });
 
@@ -743,7 +1092,17 @@ $("btn-join").addEventListener("click", async () => {
 
 /* ================= BOOT / REJOIN ================= */
 (async function boot() {
+  const urlCode = (new URLSearchParams(location.search).get("room") || "").trim().toUpperCase().slice(0, 6);
   const saved = loadIdentity();
+  if (urlCode && (!saved || !saved.roomCode || String(saved.roomCode).toUpperCase() !== urlCode)) {
+    /* Invite link for a DIFFERENT room than the saved session: the invite wins.
+       prefillFromUrl() has already put the code in the join form — show the landing
+       screen instead of silently rejoining the old room, and drop the stale session
+       so a later plain visit can't resurrect it either. */
+    if (saved) clearIdentity();
+    showView("landing");
+    return;
+  }
   if (!saved || !saved.roomCode || !saved.playerId) { showView("landing"); return; }
   try {
     const rRes = await sb.from("rooms").select("*").eq("code", saved.roomCode).maybeSingle();
