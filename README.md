@@ -34,8 +34,15 @@ Supabase project **"wedding bets"** (ref `etojeszmiwfgncokrsay`):
 ## How to play
 
 - **Host:** Create a room (wedding title + your name). You get a big 6-letter
-  join code and an invite link (`?room=CODE`). As host you can also settle
-  moments and add custom props live.
+  join code, an invite link (`?room=CODE`), and a QR code of that link right in
+  the room header. As host you can also settle moments and add custom props live.
+- **QR joining:** Everyone in the room (not just the host) sees the QR card —
+  anyone can recruit more players. Tap the QR to open a fullscreen scan view
+  (giant QR, wedding title, and the room code in big letters) that the host can
+  hold up across the room for guests to scan. Scanning opens the invite link,
+  which pre-fills the room code on the join form, so a guest only types their
+  name. If the QR library (loaded from CDN) ever fails, the code and the
+  copy-invite-link button still work on their own.
 - **Guests:** Open the link (or enter the code) + your name. Pick Yes/No and a
   stake on each moment before it's settled. Everyone starts at 100 points;
   win your stake when you call it right, lose it when you don't.

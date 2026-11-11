@@ -6,6 +6,7 @@
 <title>Wedding Bets 💍</title>
 <meta name="description" content="The wedding-day betting game — call the moments, stake your points, win the night.">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <style>
   :root{
     --bg:#12081f; --bg2:#1d0f33; --card:#22143d; --card2:#2a1850;
@@ -69,6 +70,32 @@
     text-shadow:0 2px 18px rgba(245,196,81,.35);padding-left:.3em;
   }
   .code-hint{color:var(--dim);font-size:.8rem;margin-bottom:10px}
+
+  /* QR share card */
+  .qr-card{
+    background:#fff;border-radius:14px;padding:12px;margin:14px auto 4px;max-width:228px;
+    cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.35);
+  }
+  .qr-card svg,.qr-card img{display:block;width:200px;height:200px;margin:0 auto}
+  .qr-card .qr-tap{color:#3a2563;font-size:.78rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-top:8px}
+  .qr-fallback{color:#3a2563;font-weight:700;font-size:.9rem;padding:24px 6px}
+
+  /* QR fullscreen overlay */
+  .qr-overlay{
+    position:fixed;inset:0;z-index:60;background:#12081f;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px 18px;text-align:center;
+  }
+  .qr-overlay .ov-title{font-size:1.5rem;font-weight:900;margin:0 0 4px}
+  .qr-overlay .ov-sub{color:var(--dim);margin:0 0 18px;font-size:1rem}
+  .qr-overlay .ov-box{background:#fff;border-radius:20px;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.55)}
+  .qr-overlay .ov-box svg,.qr-overlay .ov-box img{display:block;width:min(72vw,420px);height:min(72vw,420px)}
+  .qr-overlay .ov-code{
+    font-size:3rem;font-weight:900;letter-spacing:.3em;padding-left:.3em;color:var(--gold2);margin:20px 0 2px;
+    text-shadow:0 2px 18px rgba(245,196,81,.35);
+  }
+  .qr-overlay .ov-hint{color:var(--dim);font-size:.95rem;margin-bottom:22px}
+  .qr-overlay .ov-close{position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;min-width:52px;min-height:52px;font-size:1.3rem}
   .me-chip{display:inline-block;background:#170b2c;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:.85rem;color:var(--gold2)}
   .row-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
 
@@ -182,6 +209,17 @@
 
   <!-- ROOM -->
   <div id="view-room" class="hidden"></div>
+</div>
+
+<!-- QR FULLSCREEN OVERLAY (lives outside the room view so re-renders never wipe it) -->
+<div id="qr-overlay" class="qr-overlay hidden">
+  <button class="btn-ghost ov-close" data-act="qr-close" aria-label="Close">✕</button>
+  <p class="ov-title" id="qr-overlay-title"></p>
+  <p class="ov-sub">Scan to join the game 📸</p>
+  <div class="ov-box" id="qr-overlay-box"></div>
+  <div class="ov-code" id="qr-overlay-code"></div>
+  <div class="ov-hint">…or type the code in at the site. Name only, you're in!</div>
+  <button class="btn-gold" data-act="qr-close" style="width:auto;padding-left:28px;padding-right:28px">Done</button>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -420,6 +458,9 @@ function renderRoom(preserveScroll) {
   html += '<p class="room-title">' + esc(room.title) + "</p>";
   html += '<div class="big-code">' + esc(room.code) + "</div>";
   html += '<div class="code-hint">Read the code aloud or share the link — guests join in seconds</div>';
+  /* QR card — filled in by renderQR() after the DOM lands; stays hidden if the QR library didn't load. */
+  html += '<div class="qr-card hidden" id="qr-card" data-act="qr-big" role="button" aria-label="Show big QR code">'
+    + '<div id="qr-box"></div><div class="qr-tap">📷 Scan to join — tap to go big</div></div>';
   html += '<div class="room-meta">👥 ' + players.length + (players.length === 1 ? " player" : " players")
     + " · 🎯 " + settledCount + "/" + props.length + " moments settled</div>";
   html += '<div style="margin-top:10px"><span class="me-chip">You\'re playing as <b>' + esc(me.name) + "</b>"
@@ -476,8 +517,70 @@ function renderRoom(preserveScroll) {
 
   $("view-room").innerHTML = html;
   showView("room");
+  renderQR();
   if (preserveScroll) window.scrollTo(0, y);
 }
+
+/* ================= QR SHARE ================= */
+function inviteUrl() {
+  return location.origin + location.pathname + "?room=" + room.code;
+}
+
+/* Build the QR SVG for the current room's invite link.
+   Returns an SVG string, or null if the library failed to load or generation failed —
+   in that case the big code + copy-link remain fully usable on their own. */
+function qrSvgString() {
+  if (!room) return null;
+  if (typeof qrcode !== "function") return null;
+  try {
+    const qr = qrcode("0", "M"); // typeNumber "0" = auto-size to fit the URL
+    qr.addData(inviteUrl());
+    qr.make();
+    try {
+      return qr.createSvgTag({ cellSize: 6, margin: 12, scalable: true });
+    } catch (e) {
+      return qr.createSvgTag(6, 12); // older positional signature
+    }
+  } catch (e) {
+    return null;
+  }
+}
+
+/* Fill the in-header QR card for the current room. Runs after every render,
+   so a leave/rejoin into a different room regenerates the correct code. */
+function renderQR() {
+  const card = $("qr-card"), box = $("qr-box");
+  if (!card || !box) return;
+  const svg = qrSvgString();
+  if (svg) {
+    box.innerHTML = svg;
+    card.classList.remove("hidden");
+  } else {
+    box.innerHTML = "";
+    card.classList.add("hidden");
+  }
+  /* If the fullscreen overlay is open (e.g. a refresh re-rendered mid-scan), keep it in sync. */
+  if (!$("qr-overlay").classList.contains("hidden")) fillOverlay();
+}
+
+function fillOverlay() {
+  const svg = qrSvgString();
+  $("qr-overlay-title").textContent = room ? room.title : "";
+  $("qr-overlay-code").textContent = room ? room.code : "";
+  $("qr-overlay-box").innerHTML = svg
+    || '<div class="qr-fallback">QR unavailable — use the code below 👇</div>';
+}
+
+function openQR() {
+  if (!room) return;
+  fillOverlay();
+  $("qr-overlay").classList.remove("hidden");
+}
+function closeQR() { $("qr-overlay").classList.add("hidden"); }
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeQR();
+});
 
 /* ================= ACTIONS ================= */
 async function savePick(propId) {
@@ -539,6 +642,10 @@ document.addEventListener("click", (e) => {
     unsettleProp(propId);
   } else if (act === "add-prop") {
     addCustomProp();
+  } else if (act === "qr-big") {
+    openQR();
+  } else if (act === "qr-close") {
+    closeQR();
   } else if (act === "copy-link") {
     const link = btn.dataset.link;
     if (navigator.clipboard && navigator.clipboard.writeText) {
