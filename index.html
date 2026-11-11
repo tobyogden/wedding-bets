@@ -232,6 +232,88 @@
   .center-msg{text-align:center;color:var(--dim);padding:34px 10px}
   .spinner{font-size:2rem;animation:spin 1.2s linear infinite;display:inline-block}
   @keyframes spin{to{transform:rotate(360deg)}}
+  /* Winner banner (room) */
+  .winner-banner{
+    text-align:center;border-color:var(--gold);
+    animation:winnerPulse 2.4s ease-in-out infinite;
+  }
+  .winner-label{font-size:.85rem;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  .winner-name{font-size:2.3rem;font-weight:900;margin:4px 0 2px;color:var(--gold2);line-height:1.1}
+  .winner-pts{font-weight:700;color:var(--ink)}
+  @keyframes winnerPulse{
+    0%,100%{box-shadow:0 0 0 1px var(--gold),0 10px 30px rgba(245,196,81,.18)}
+    50%{box-shadow:0 0 0 1px var(--gold),0 10px 44px rgba(245,196,81,.45)}
+  }
+
+  /* ============ BIG-SCREEN / DJ DISPLAY (?screen=CODE) ============ */
+  #view-screen{min-height:100vh;padding:30px 38px 36px;display:flex;flex-direction:column}
+  .scr-brand{
+    text-align:center;font-weight:900;letter-spacing:.28em;font-size:clamp(.9rem,1.6vw,1.2rem);color:var(--gold);
+  }
+  .scr-title{
+    text-align:center;margin:6px 0 2px;font-weight:900;line-height:1.05;
+    font-size:clamp(2.2rem,6vw,4.6rem);
+    background:linear-gradient(90deg,var(--gold2),var(--gold),var(--pink));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .scr-progress{text-align:center;color:var(--dim);font-size:clamp(1.05rem,2.2vw,1.6rem);font-weight:700;margin-top:4px}
+  .scr-main{
+    flex:1;display:grid;grid-template-columns:1.55fr 1fr;gap:34px;
+    max-width:1460px;width:100%;margin:28px auto 0;align-items:start;
+  }
+  .scr-sec-title{
+    font-size:clamp(1rem,1.9vw,1.4rem);font-weight:800;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--gold);margin-bottom:14px;
+  }
+  .scr-row{
+    display:flex;align-items:center;gap:16px;padding:13px 16px;margin-bottom:10px;
+    background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--line);border-radius:16px;
+  }
+  .scr-row.leader{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 8px 30px rgba(245,196,81,.22)}
+  .scr-rank{font-size:clamp(1.3rem,2.6vw,2rem);min-width:52px;text-align:center}
+  .scr-name{flex:1;font-weight:800;font-size:clamp(1.35rem,3.2vw,2.5rem);line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .scr-lead-tag{display:block;font-size:clamp(.72rem,1.4vw,.95rem);font-weight:800;letter-spacing:.1em;color:var(--gold)}
+  .scr-pts{font-weight:900;font-size:clamp(1.35rem,3.2vw,2.5rem);color:var(--gold2);white-space:nowrap}
+  .scr-side{display:flex;flex-direction:column;gap:28px}
+  .scr-result{
+    padding:12px 16px;margin-bottom:10px;background:#1a0d30;
+    border:1px solid var(--line);border-radius:14px;
+  }
+  .scr-result .r-label{font-size:clamp(1rem,2vw,1.45rem);font-weight:700;line-height:1.3}
+  .scr-result .r-out{font-weight:800;font-size:clamp(.95rem,1.8vw,1.3rem);margin-top:3px}
+  .scr-result .r-win{color:var(--dim);font-size:clamp(.9rem,1.7vw,1.2rem);margin-top:2px}
+  .scr-result .r-win b{color:var(--gold2)}
+  .scr-qr{
+    background:#fff;border-radius:20px;padding:18px;text-align:center;color:#2a1850;
+    box-shadow:0 14px 44px rgba(0,0,0,.5);width:min(100%,320px);margin:0 auto;
+  }
+  .scr-qr svg,.scr-qr img{display:block;width:100%;height:auto;max-width:264px;margin:0 auto}
+  .scr-qr-cap{font-weight:900;letter-spacing:.14em;font-size:1.05rem;margin-top:10px;color:#2a1850;text-transform:uppercase}
+  .scr-qr-code{font-weight:900;letter-spacing:.3em;padding-left:.3em;font-size:1.5rem;color:#7c3aed;margin-top:2px}
+  .scr-qr-fallback{font-weight:800;font-size:1.15rem;padding:26px 6px;color:#2a1850}
+  .scr-empty{color:var(--dim);font-size:clamp(1rem,2vw,1.4rem);font-style:italic;padding:8px 2px}
+  .scr-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;width:100%}
+  .scr-big-msg{font-size:clamp(2rem,6vw,4rem);font-weight:900}
+  .scr-winner-label{
+    font-size:clamp(1.2rem,3vw,2rem);font-weight:900;letter-spacing:.3em;color:var(--gold);text-transform:uppercase;
+  }
+  .scr-winner-name{
+    font-size:clamp(3.2rem,12vw,9.5rem);font-weight:900;line-height:1.02;color:var(--gold2);
+    margin:10px 0 4px;animation:winnerGlow 2.2s ease-in-out infinite;word-break:break-word;
+  }
+  @keyframes winnerGlow{
+    0%,100%{text-shadow:0 0 22px rgba(245,196,81,.45),0 0 64px rgba(245,196,81,.18)}
+    50%{text-shadow:0 0 44px rgba(245,196,81,.9),0 0 120px rgba(245,196,81,.42)}
+  }
+  .scr-winner-pts{font-size:clamp(1.5rem,4vw,2.8rem);font-weight:800;color:var(--ink)}
+  .scr-top5{width:min(680px,92vw);margin-top:34px;text-align:left}
+  .scr-loading{margin:auto;text-align:center;color:var(--dim);font-size:1.2rem}
+  @media (max-aspect-ratio:1/1){
+    .scr-main{grid-template-columns:1fr}
+    #view-screen{padding:22px 16px 30px}
+  }
+
   .hidden{display:none !important}
   .foot-note{text-align:center;color:var(--dim);font-size:.78rem;margin-top:22px}
 </style>
@@ -281,6 +363,9 @@
   <div id="view-room" class="hidden"></div>
 </div>
 
+<!-- BIG-SCREEN / DJ DISPLAY (rendered by JS when ?screen=CODE is in the URL; read-only) -->
+<div id="view-screen" class="hidden"></div>
+
 <!-- QR FULLSCREEN OVERLAY (lives outside the room view so re-renders never wipe it) -->
 <div id="qr-overlay" class="qr-overlay hidden">
   <button class="btn-ghost ov-close" data-act="qr-close" aria-label="Close">✕</button>
@@ -290,6 +375,16 @@
   <div class="ov-code" id="qr-overlay-code"></div>
   <div class="ov-hint">…or type the code in at the site. Name only, you're in!</div>
   <button class="btn-gold" data-act="qr-close" style="width:auto;padding-left:28px;padding-right:28px">Done</button>
+</div>
+
+<!-- END GAME CONFIRM (same in-app modal pattern as leave / referee regen) -->
+<div id="finish-overlay" class="qr-overlay hidden">
+  <p class="ov-title">End the game? 🏁</p>
+  <p class="ov-sub">The winner gets crowned on the big screen and all betting freezes.<br>You can reopen the game if you tap it by mistake.</p>
+  <div class="row-btns">
+    <button class="btn-ghost" data-act="finish-cancel" style="padding-left:26px;padding-right:26px">Keep playing</button>
+    <button class="btn-pink" data-act="finish-confirm" style="width:auto;padding-left:26px;padding-right:26px">End game 👑</button>
+  </div>
 </div>
 
 <!-- LEAVE CONFIRM (in-app modal — native confirm() gets auto-dismissed/suppressed in
@@ -504,6 +599,7 @@ function subscribeRealtime() {
     async (payload) => {
       if (payload.new && payload.new.title) room.title = payload.new.title;
       if (payload.new && "ref_code" in payload.new) room.ref_code = payload.new.ref_code;
+      if (payload.new && "finished" in payload.new) room.finished = payload.new.finished;
       scheduleRefresh();
     });
   channel.subscribe();
@@ -567,8 +663,9 @@ function roleTag(p) {
 }
 
 function renderProp(prop) {
+  const gameOver = !!(room && room.finished);
   const settled = prop.outcome !== null && prop.outcome !== undefined;
-  const locked = !settled && propLocked(prop);
+  const locked = !settled && !gameOver && propLocked(prop);
   if (locked) lockedRendered.add(prop.id); else lockedRendered.delete(prop.id);
   const s = getSel(prop);
   const existing = myPick(prop.id);
@@ -594,6 +691,9 @@ function renderProp(prop) {
 
   if (locked) {
     html += '<div class="locked-badge">🔒 Betting closed</div>';
+  } else if (gameOver && !settled) {
+    /* Finished = a global lock on the pick UI: sides stay visible, controls go away. */
+    html += '<div class="locked-badge">🏁 Game over — final results are in</div>';
   } else if (!settled) {
     html += '<div class="pick-controls">';
     html += '<div class="pick-label">Your call' + (existing ? ' — saved, tap Save to change it' : "") + "</div>";
@@ -612,7 +712,8 @@ function renderProp(prop) {
     html += "</div>";
   }
 
-  if (me.is_host) {
+  /* Settle controls freeze while the game is finished — reopen to change a result. */
+  if (me.is_host && !gameOver) {
     html += '<div class="host-zone"><div class="pick-label">👑 Host controls</div><div class="host-row">';
     if (!settled) {
       html += '<button class="btn-happened btn-small" data-act="settle" data-prop="' + prop.id + '" data-val="true">It happened</button>';
@@ -672,13 +773,44 @@ function renderRoom(preserveScroll) {
   html += '<div class="qr-card hidden" id="qr-card" data-act="qr-big" role="button" aria-label="Show big QR code">'
     + '<div id="qr-box"></div><div class="qr-tap">📷 Scan to join — tap to go big</div></div>';
   html += '<div class="room-meta">👥 ' + players.length + (players.length === 1 ? " player" : " players")
-    + " · 🎯 " + settledCount + "/" + props.length + " moments settled</div>";
+    + " · 🎯 " + settledCount + "/" + props.length + " moments settled"
+    + (room.finished ? " · 🏁 Game over" : "") + "</div>";
   html += '<div style="margin-top:10px"><span class="me-chip">You\'re playing as <b>' + esc(me.name) + "</b>"
     + (me.is_referee ? " · 🏅 Referee" : me.is_host ? " · 👑 Host" : "") + " · " + playerPoints(me.id) + " pts</span></div>";
   html += '<div class="row-btns">';
   html += '<button class="btn-ghost btn-small" data-act="copy-link" data-link="' + esc(shareLink) + '">🔗 Copy invite link</button>';
+  if (me.is_host) {
+    const screenLink = location.origin + location.pathname + "?screen=" + room.code;
+    html += '<button class="btn-ghost btn-small" data-act="copy-screen-link" data-link="' + esc(screenLink) + '">📺 Copy big-screen link</button>';
+  }
   html += '<button class="btn-ghost btn-small" data-act="leave">🚪 Leave room</button>';
   html += "</div></div>";
+
+  /* Winner banner — everyone sees it once the game is finished */
+  if (room.finished) {
+    const top = standings[0];
+    html += '<div class="card winner-banner">';
+    html += '<div class="winner-label">🏆 Winner</div>';
+    if (top) {
+      html += '<div class="winner-name">' + esc(top.p.name) + "</div>";
+      html += '<div class="winner-pts">' + top.pts + " points — champion of the night 👑</div>";
+    } else {
+      html += '<div class="winner-pts">The game is over!</div>';
+    }
+    html += '<p class="sub" style="margin:8px 0 0">Final standings below — betting is closed.</p>';
+    if (me.is_host) {
+      html += '<div class="row-btns"><button class="btn-ghost btn-small" data-act="reopen-game">↩ Reopen game</button></div>';
+    }
+    html += "</div>";
+  }
+
+  /* Host: end-game control (hidden once finished — Reopen lives in the banner) */
+  if (me.is_host && !room.finished) {
+    html += '<div class="card"><h3>🏁 The finish line</h3>';
+    html += '<p class="sub">When the last moment has been called, end the game: the winner is crowned, the big screen flips to the winner spotlight, and all betting freezes for everyone. You can reopen if you tap it by mistake.</p>';
+    html += '<button class="btn-pink" data-act="finish-open" style="margin-top:0">🏁 End game &amp; crown the winner</button>';
+    html += "</div>";
+  }
 
   /* Host: betting deadlines */
   if (me.is_host && props.length) {
@@ -708,13 +840,13 @@ function renderRoom(preserveScroll) {
   if (me.is_host) html += renderRefBlock();
 
   /* Standings */
-  html += '<div class="card"><h3>🏆 Standings</h3>';
+  html += '<div class="card"><h3>' + (room.finished ? "🏆 Final standings" : "🏆 Standings") + "</h3>";
   if (!standings.length) {
     html += '<p class="sub">Nobody here yet — read that code out loud!</p>';
   }
   standings.forEach((row, i) => {
     const cls = row.pts > 100 ? "pts-up" : row.pts < 100 ? "pts-down" : "pts-flat";
-    const crown = (i === 0 && anySettled()) ? '<span class="crown">👑</span> ' : "";
+    const crown = (i === 0 && (anySettled() || room.finished)) ? '<span class="crown">👑</span> ' : "";
     html += '<div class="stand-row"><div class="stand-name">' + crown + esc(row.p.name)
       + roleTag(row.p)
       + (me && row.p.id === me.id ? ' <span style="color:var(--dim)">(you)</span>' : "")
@@ -951,14 +1083,31 @@ async function setNewRefCode(isRegen) {
   renderRoom(true);
 }
 
+/* ================= END GAME (host) ================= */
+function openFinish() { $("finish-overlay").classList.remove("hidden"); }
+function closeFinish() { $("finish-overlay").classList.add("hidden"); }
+
+/* End (finished=true) or reopen (finished=false) the game. Ending freezes every
+   pick control in the room — renderProp treats finished as a global lock — and
+   freezes settling until the game is reopened; the big screen flips to the
+   winner spotlight off the same flag via realtime. */
+async function setFinished(val) {
+  const { error } = await sb.from("rooms").update({ finished: val }).eq("id", room.id);
+  if (error) { toast(val ? "Couldn't end the game — try again." : "Couldn't reopen the game — try again.", true); return; }
+  room.finished = val;
+  toast(val ? "Game over — we have a winner! 🏆" : "Game reopened — betting is live again! 🎲");
+  renderRoom(true);
+}
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { closeQR(); closeLeave(); closeRefConfirm(); }
+  if (e.key === "Escape") { closeQR(); closeLeave(); closeRefConfirm(); closeFinish(); }
 });
 
 /* ================= ACTIONS ================= */
 async function savePick(propId) {
   const s = sel[propId];
   if (!s) return;
+  if (room && room.finished) { toast("The game is over — final results are in 🏁", true); return; }
   const prop = props.find((p) => p.id === propId);
   const isUnsettled = prop && (prop.outcome === null || prop.outcome === undefined);
   /* Deadline already passed on this device — don't even send it; the DB would refuse. */
@@ -1137,6 +1286,25 @@ document.addEventListener("click", (e) => {
   } else if (act === "ref-regen-confirm") {
     closeRefConfirm();
     setNewRefCode(true);
+  } else if (act === "copy-screen-link") {
+    const link = btn.dataset.link;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(
+        () => toast("Big-screen link copied! 📺 Put it on the TV."),
+        () => toast("Copy failed — the link is this site's address + ?screen=" + room.code, true)
+      );
+    } else {
+      toast("Copy isn't available here — the link is this site's address + ?screen=" + room.code);
+    }
+  } else if (act === "finish-open") {
+    openFinish();
+  } else if (act === "finish-cancel") {
+    closeFinish();
+  } else if (act === "finish-confirm") {
+    closeFinish();
+    setFinished(true);
+  } else if (act === "reopen-game") {
+    setFinished(false);
   }
 });
 
@@ -1251,9 +1419,193 @@ $("btn-join").addEventListener("click", async () => {
   }
 })();
 
+/* ================= BIG-SCREEN / DJ DISPLAY (?screen=CODE) =================
+   A pure display: no identity, no localStorage, no controls of any kind. It
+   borrows the global room/players/props/picks state and the shared scoring
+   helpers, but `me` stays null the whole time, so none of the room-mode
+   machinery (saved-session refresh, lock ticker, pick state) ever engages. */
+let screenChannel = null;
+let screenTimer = null;
+
+async function fetchScreenData() {
+  const [pl, pr, pk] = await Promise.all([
+    sb.from("players").select("*").eq("room_id", room.id).order("created_at", { ascending: true }),
+    sb.from("props").select("*").eq("room_id", room.id).order("created_at", { ascending: true }),
+    sb.from("picks").select("*").eq("room_id", room.id)
+  ]);
+  if (pl.error) throw pl.error;
+  if (pr.error) throw pr.error;
+  if (pk.error) throw pk.error;
+  players = pl.data || [];
+  props = pr.data || [];
+  picks = pk.data || [];
+}
+
+function scheduleScreenRefresh() {
+  clearTimeout(screenTimer);
+  screenTimer = setTimeout(async () => {
+    if (!room) return;
+    try { await fetchScreenData(); renderScreen(); }
+    catch (e) { /* transient — the next realtime event retries */ }
+  }, 150);
+}
+
+function subscribeScreen() {
+  if (screenChannel) { sb.removeChannel(screenChannel); screenChannel = null; }
+  screenChannel = sb.channel("screen-" + room.id);
+  for (const t of ["players", "props", "picks"]) {
+    screenChannel.on("postgres_changes",
+      { event: "*", schema: "public", table: t, filter: "room_id=eq." + room.id },
+      scheduleScreenRefresh);
+  }
+  screenChannel.on("postgres_changes",
+    { event: "*", schema: "public", table: "rooms", filter: "id=eq." + room.id },
+    (payload) => {
+      if (payload.new) {
+        if (payload.new.title) room.title = payload.new.title;
+        if ("finished" in payload.new) room.finished = payload.new.finished;
+      }
+      scheduleScreenRefresh();
+    });
+  screenChannel.subscribe();
+}
+
+function screenStandings() {
+  return [...players]
+    .map((p) => ({ p, pts: playerPoints(p.id) }))
+    .sort((a, b) => b.pts - a.pts || a.p.name.localeCompare(b.p.name));
+}
+
+/* Biggest winner of a settled prop: the correct caller with the largest stake. */
+function biggestWinner(prop) {
+  let best = null;
+  for (const k of picks) {
+    if (k.prop_id !== prop.id || k.choice !== prop.outcome) continue;
+    if (!best || k.stake > best.stake) best = k;
+  }
+  if (!best) return null;
+  const pl = players.find((p) => p.id === best.player_id);
+  return { name: pl ? pl.name : "Someone", gain: best.stake };
+}
+
+function medal(i) { return ["🥇", "🥈", "🥉"][i] || String(i + 1); }
+
+function renderScreen() {
+  const el = $("view-screen");
+  const settled = props.filter((p) => p.outcome !== null && p.outcome !== undefined);
+  const standings = screenStandings();
+  const progress = "🎯 " + settled.length + " / " + props.length + " moments called";
+
+  let html = '<div class="scr-brand">WEDDING BETS 🎲</div>';
+  html += '<h1 class="scr-title">' + esc(room.title) + "</h1>";
+
+  if (room.finished) {
+    /* ---- Winner spotlight ---- */
+    const winner = standings[0];
+    html += '<div class="scr-center">';
+    if (winner) {
+      html += '<div class="scr-winner-label">🏆 Winner</div>';
+      html += '<div class="scr-winner-name">' + esc(winner.p.name) + "</div>";
+      html += '<div class="scr-winner-pts">' + winner.pts + " points</div>";
+    } else {
+      html += '<div class="scr-big-msg">🏁 Game over!</div>';
+    }
+    html += '<div class="scr-progress">' + esc(progress) + "</div>";
+    if (standings.length) {
+      html += '<div class="scr-top5"><div class="scr-sec-title">Final standings</div>';
+      standings.slice(0, 5).forEach((row, i) => {
+        html += '<div class="scr-row' + (i === 0 ? " leader" : "") + '">'
+          + '<div class="scr-rank">' + medal(i) + "</div>"
+          + '<div class="scr-name">' + esc(row.p.name) + "</div>"
+          + '<div class="scr-pts">' + row.pts + "</div></div>";
+      });
+      html += "</div>";
+    }
+    html += "</div>";
+    el.innerHTML = html;
+    return;
+  }
+
+  /* ---- Live board ---- */
+  html += '<div class="scr-progress">' + esc(progress) + "</div>";
+  html += '<div class="scr-main">';
+
+  html += '<div><div class="scr-sec-title">🏆 Standings</div>';
+  if (!standings.length) {
+    html += '<div class="scr-empty">Waiting for the first players to join…</div>';
+  }
+  standings.slice(0, 8).forEach((row, i) => {
+    html += '<div class="scr-row' + (i === 0 ? " leader" : "") + '">'
+      + '<div class="scr-rank">' + medal(i) + "</div>"
+      + '<div class="scr-name">' + esc(row.p.name)
+      + (i === 0 && standings.length > 1 ? '<span class="scr-lead-tag">IN THE LEAD 👑</span>' : "")
+      + "</div>"
+      + '<div class="scr-pts">' + row.pts + "</div></div>";
+  });
+  html += "</div>";
+
+  html += '<div class="scr-side">';
+  html += '<div><div class="scr-sec-title">Latest results</div>';
+  /* Props carry no settled-at timestamp, so "latest" = most recently added
+     settled moments (custom moments land at the end of the board as called). */
+  const latest = [...settled]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 4);
+  if (!latest.length) {
+    html += '<div class="scr-empty">No moments called yet — the night is young ✨</div>';
+  }
+  for (const prop of latest) {
+    const bw = biggestWinner(prop);
+    html += '<div class="scr-result"><div class="r-label">' + esc(prop.label) + "</div>"
+      + '<div class="r-out">' + (prop.outcome ? "✅ It happened!" : "❌ It didn't happen") + "</div>"
+      + (bw ? '<div class="r-win">Biggest winner: <b>' + esc(bw.name) + " +" + bw.gain + "</b></div>" : "")
+      + "</div>";
+  }
+  html += "</div>";
+
+  /* Join QR — the same invite-link QR as the room screen, so late guests
+     can jump in straight from the big screen. */
+  const svg = qrSvgString();
+  html += '<div class="scr-qr">'
+    + (svg || '<div class="scr-qr-fallback">Join with the code below 👇</div>')
+    + '<div class="scr-qr-cap">📷 Scan to play</div>'
+    + '<div class="scr-qr-code">' + esc(room.code) + "</div></div>";
+
+  html += "</div></div>";
+  el.innerHTML = html;
+}
+
+async function initScreen(code) {
+  document.querySelector(".wrap").classList.add("hidden");
+  const el = $("view-screen");
+  el.classList.remove("hidden");
+  el.innerHTML = '<div class="scr-loading"><span class="spinner">🎲</span><br><br>Raising the big board…</div>';
+  try {
+    const rRes = await sb.from("rooms").select("*").eq("code", code).maybeSingle();
+    if (rRes.error) throw rRes.error;
+    if (!rRes.data) {
+      el.innerHTML = '<div class="scr-center"><div class="scr-brand">WEDDING BETS 🎲</div>'
+        + '<div class="scr-big-msg" style="margin-top:14px">🔍 Room not found</div>'
+        + '<div class="scr-progress">No game with code ' + esc(code) + " — check the code and try again.</div></div>";
+      return;
+    }
+    room = rRes.data; // me stays null on purpose: display only, no session is read or written
+    await fetchScreenData();
+    renderScreen();
+    subscribeScreen();
+  } catch (e) {
+    el.innerHTML = '<div class="scr-center"><div class="scr-brand">WEDDING BETS 🎲</div>'
+      + '<div class="scr-big-msg" style="margin-top:14px">📡 Can\'t reach the game</div>'
+      + '<div class="scr-progress">Check the connection and reload this page.</div></div>';
+  }
+}
+
 /* ================= BOOT / REJOIN ================= */
 (async function boot() {
-  const urlCode = (new URLSearchParams(location.search).get("room") || "").trim().toUpperCase().slice(0, 6);
+  const bootParams = new URLSearchParams(location.search);
+  const screenCode = (bootParams.get("screen") || "").trim().toUpperCase().slice(0, 6);
+  if (screenCode) { initScreen(screenCode); return; } // big-screen display: no landing, no session
+  const urlCode = (bootParams.get("room") || "").trim().toUpperCase().slice(0, 6);
   const saved = loadIdentity();
   if (urlCode && (!saved || !saved.roomCode || String(saved.roomCode).toUpperCase() !== urlCode)) {
     /* Invite link for a DIFFERENT room than the saved session: the invite wins.

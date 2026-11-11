@@ -30,6 +30,10 @@ Supabase project **"wedding bets"** (ref `etojeszmiwfgncokrsay`):
   the original schema; the app degrades gracefully if they're absent (room
   creation falls back to no ref code, and the host panel offers a "Generate"
   button for rooms that don't have one yet).
+- `rooms.finished` (boolean, default false) is the end-game flag. The host
+  sets it when the game ends; the room view and the big-screen display both
+  read it live over Realtime. Until the column exists the app simply treats
+  every room as in progress.
 
 ## Deploy (Netlify)
 
@@ -89,6 +93,24 @@ Supabase project **"wedding bets"** (ref `etojeszmiwfgncokrsay`):
   determined guest could read it from the raw API response. That's accepted
   by design — this is an honor-system party game, and regenerating is the
   remedy if a code leaks.
+- **Ending the game (host):** The "🏁 The finish line" card ends the game
+  (behind an in-app confirm): it sets `rooms.finished`, which crowns the
+  winner in a banner at the top of the room, renames the standings to "Final
+  standings," and freezes everything — pick controls disappear for everyone
+  behind a "🏁 Game over" badge, and settle/unsettle buttons stay disabled
+  until the host taps **↩ Reopen game** in the banner. Ending is fully
+  reversible.
+- **Big-screen / DJ mode:** Open `?screen=CODE` (e.g.
+  `https://weddingbets.netlify.app/?screen=37PF2N`) on a TV, projector, or
+  the DJ's laptop. It's a pure read-only display — no login, no session, no
+  controls — that stays live over Realtime: wedding title, top-8 standings
+  with the leader marked "IN THE LEAD 👑", a "X / Y moments called"
+  progress line, the latest settled moments with their biggest winners, and
+  the join QR in the corner so late guests can scan in from the screen. The
+  host gets a **📺 Copy big-screen link** button in the room header. When
+  the host ends the game, the screen flips to a winner spotlight: the
+  champion's name in huge glowing type, their final points, and the final
+  top 5. A bad code gets a friendly "Room not found" screen.
 - Identity is kept in the browser (localStorage), so a refresh drops you
   right back into your seat. **Leave room** fully clears that saved seat (via
   an in-app confirm — native `confirm()` dialogs can be auto-dismissed or
