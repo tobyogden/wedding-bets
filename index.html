@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Wedding Bets 💍</title>
+<meta name="description" content="The wedding-day betting game — call the moments, stake your points, win the night.">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --bg:#12081f; --bg2:#1d0f33; --card:#22143d; --card2:#2a1850;
+    --gold:#f5c451; --gold2:#ffdf8e; --pink:#ff6b9d; --mint:#5eead4;
+    --ink:#f7f2ff; --dim:#b9a8d9; --line:#3a2563;
+    --yes:#34d399; --no:#fb7185;
+    --radius:18px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink); min-height:100vh;
+    background:
+      radial-gradient(900px 500px at 15% -5%, #3b1a6e 0%, transparent 60%),
+      radial-gradient(700px 420px at 95% 0%, #5b2144 0%, transparent 55%),
+      linear-gradient(180deg, var(--bg2), var(--bg));
+    background-attachment:fixed;
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:18px 14px 60px}
+  h1.logo{
+    text-align:center;margin:16px 0 2px;font-size:2rem;letter-spacing:.5px;
+    background:linear-gradient(90deg,var(--gold2),var(--gold),var(--pink));
+    -webkit-background-clip:text;background-clip:text;color:transparent;font-weight:900;
+  }
+  .tagline{text-align:center;color:var(--dim);margin:0 0 20px;font-size:.95rem}
+  .card{
+    background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px;margin:0 0 14px;box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  .card h2{margin:0 0 6px;font-size:1.15rem}
+  .card h3{margin:0 0 8px;font-size:1rem}
+  .sub{color:var(--dim);font-size:.9rem;margin:0 0 12px}
+  label.f{display:block;font-size:.8rem;color:var(--dim);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.06em}
+  input[type=text]{
+    width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);
+    background:#170b2c;color:var(--ink);font-size:1.05rem;outline:none;
+  }
+  input[type=text]:focus{border-color:var(--gold)}
+  input.code{text-transform:uppercase;letter-spacing:.35em;font-weight:800;text-align:center;font-size:1.3rem}
+  button{
+    font:inherit;cursor:pointer;border:none;border-radius:12px;padding:13px 16px;
+    font-weight:700;font-size:1rem;transition:transform .06s ease, filter .15s ease;
+  }
+  button:active{transform:scale(.97)}
+  button:disabled{opacity:.45;cursor:default}
+  .btn-gold{background:linear-gradient(90deg,var(--gold),#ffb347);color:#2a1503;width:100%;margin-top:14px}
+  .btn-pink{background:linear-gradient(90deg,var(--pink),#ff8fab);color:#38091c;width:100%;margin-top:10px}
+  .btn-ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+  .btn-small{padding:8px 12px;font-size:.85rem;border-radius:10px}
+  .divider{display:flex;align-items:center;gap:10px;color:var(--dim);font-size:.8rem;margin:18px 0 4px}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* Room header */
+  .room-head{text-align:center;padding:20px 16px}
+  .room-title{font-size:1.35rem;font-weight:900;margin:0 0 4px}
+  .room-meta{color:var(--dim);font-size:.9rem}
+  .big-code{
+    font-size:2.6rem;font-weight:900;letter-spacing:.3em;margin:10px 0 2px;color:var(--gold2);
+    text-shadow:0 2px 18px rgba(245,196,81,.35);padding-left:.3em;
+  }
+  .code-hint{color:var(--dim);font-size:.8rem;margin-bottom:10px}
+  .me-chip{display:inline-block;background:#170b2c;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:.85rem;color:var(--gold2)}
+  .row-btns{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+
+  /* Standings */
+  .stand-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px dashed var(--line)}
+  .stand-row:last-child{border-bottom:none}
+  .stand-name{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .stand-name .host-tag{color:var(--gold);font-size:.72rem;font-weight:800;letter-spacing:.05em;margin-left:6px}
+  .stand-pts{font-weight:900;font-size:1.05rem}
+  .pts-up{color:var(--yes)} .pts-down{color:var(--no)} .pts-flat{color:var(--dim)}
+  .crown{font-size:1.1rem}
+
+  /* Props */
+  .cat-title{
+    margin:22px 2px 10px;font-size:.85rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);
+    display:flex;align-items:center;gap:8px;
+  }
+  .cat-title::after{content:"";flex:1;height:1px;background:var(--line)}
+  .prop-q{font-size:1.05rem;font-weight:700;line-height:1.35;margin:0 0 10px}
+  .sides{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 10px}
+  .side{border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:#1a0d30;min-height:44px}
+  .side .side-label{font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+  .side.yes .side-label{color:var(--yes)} .side.no .side-label{color:var(--no)}
+  .side .who{font-size:.83rem;color:var(--ink);line-height:1.5;word-break:break-word}
+  .side .who .stake{color:var(--gold2);font-weight:700}
+  .side .who .delta-win{color:var(--yes);font-weight:800}
+  .side .who .delta-lose{color:var(--no);font-weight:800}
+  .side .empty{color:var(--dim);font-size:.83rem;font-style:italic}
+  .outcome-badge{
+    display:inline-block;border-radius:999px;padding:5px 12px;font-weight:800;font-size:.85rem;margin-bottom:10px;
+  }
+  .outcome-yes{background:rgba(52,211,153,.18);color:var(--yes);border:1px solid var(--yes)}
+  .outcome-no{background:rgba(251,113,133,.15);color:var(--no);border:1px solid var(--no)}
+
+  .pick-controls{border-top:1px dashed var(--line);padding-top:12px;margin-top:4px}
+  .pick-label{font-size:.78rem;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px}
+  .toggle-row{display:flex;gap:8px}
+  .toggle-btn{
+    flex:1;padding:12px;border-radius:12px;background:#170b2c;color:var(--dim);
+    border:2px solid var(--line);font-weight:800;font-size:1rem;
+  }
+  .toggle-btn.sel-yes{border-color:var(--yes);color:var(--yes);background:rgba(52,211,153,.12)}
+  .toggle-btn.sel-no{border-color:var(--no);color:var(--no);background:rgba(251,113,133,.1)}
+  .stake-row{display:flex;gap:8px;margin-top:8px;align-items:stretch}
+  .stake-btn{
+    flex:1;padding:10px 4px;border-radius:10px;background:#170b2c;color:var(--dim);
+    border:2px solid var(--line);font-weight:800;
+  }
+  .stake-btn.sel{border-color:var(--gold);color:var(--gold2);background:rgba(245,196,81,.12)}
+  .save-btn{
+    margin-top:8px;width:100%;background:linear-gradient(90deg,var(--gold),#ffb347);color:#2a1503;padding:12px;
+  }
+  .save-btn.saved{background:#2c1a52;color:var(--mint);border:1px solid var(--mint)}
+  .host-zone{border-top:1px dashed var(--line);padding-top:10px;margin-top:10px}
+  .host-zone .pick-label{color:var(--gold)}
+  .host-row{display:flex;gap:8px;flex-wrap:wrap}
+  .host-row button{flex:1;min-width:100px}
+  .btn-happened{background:rgba(52,211,153,.16);color:var(--yes);border:1px solid var(--yes)}
+  .btn-didnt{background:rgba(251,113,133,.13);color:var(--no);border:1px solid var(--no)}
+  .btn-unsettle{background:transparent;color:var(--dim);border:1px solid var(--line)}
+
+  .toast{
+    position:fixed;left:50%;transform:translateX(-50%);bottom:22px;z-index:50;
+    background:#2c1a52;border:1px solid var(--gold);color:var(--ink);
+    padding:11px 18px;border-radius:999px;font-weight:600;font-size:.92rem;
+    box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s ease;
+    max-width:92vw;text-align:center;
+  }
+  .toast.show{opacity:1}
+  .toast.err{border-color:var(--no)}
+  .center-msg{text-align:center;color:var(--dim);padding:34px 10px}
+  .spinner{font-size:2rem;animation:spin 1.2s linear infinite;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .hidden{display:none !important}
+  .foot-note{text-align:center;color:var(--dim);font-size:.78rem;margin-top:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="logo">💍 Wedding Bets 🎉</h1>
+  <p class="tagline">Call the moments. Stake your points. Win the night.</p>
+
+  <!-- LOADING -->
+  <div id="view-loading" class="center-msg"><span class="spinner">🎲</span><br><br>Shuffling the deck…</div>
+
+  <!-- LANDING -->
+  <div id="view-landing" class="hidden">
+    <div class="card">
+      <h2>🎰 Start a new game</h2>
+      <p class="sub">For the couple, the wedding party, or whoever's running the book tonight.</p>
+      <label class="f" for="create-title">Wedding title</label>
+      <input type="text" id="create-title" placeholder="e.g. Danielle &amp; Cisco — Nov 11" maxlength="80">
+      <label class="f" for="create-name">Your name</label>
+      <input type="text" id="create-name" placeholder="e.g. Toby" maxlength="30">
+      <button class="btn-gold" id="btn-create">Create room &amp; deal me in →</button>
+    </div>
+
+    <div class="divider">or join the action</div>
+
+    <div class="card">
+      <h2>🎟️ Join a room</h2>
+      <p class="sub">Got a 6-letter code from the host? Jump in.</p>
+      <label class="f" for="join-code">Room code</label>
+      <input type="text" id="join-code" class="code" placeholder="ABC123" maxlength="6" autocomplete="off">
+      <label class="f" for="join-name">Your name</label>
+      <input type="text" id="join-name" placeholder="e.g. Lauren" maxlength="30">
+      <button class="btn-pink" id="btn-join">Join room →</button>
+    </div>
+    <p class="foot-note">Everyone starts with 100 points. Stakes are 5, 10 or 25. Loser buys the next round. 🍻</p>
+  </div>
+
+  <!-- ROOM -->
+  <div id="view-room" class="hidden"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= CONFIG ================= */
+const SUPABASE_URL = "https://etojeszmiwfgncokrsay.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0b2plc3ptaXdmZ25jb2tyc2F5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQzNjg3NDQsImV4cCI6MjEwOTk0NDc0NH0.a64SpVmFRTV5PwPOxtgr2L7Qsg7VEBNbvRSd9LXdSOg";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ================= THE 21 STANDARD PROPS ================= */
+const CATEGORY_ORDER = ["Getting Ready", "First Look", "Ceremony", "Portraits", "Reception"];
+const STANDARD_PROPS = [
+  ["Will they forget the nice dress hanger?", "Getting Ready"],
+  ["Will hair & makeup run more than 20 minutes late?", "Getting Ready"],
+  ["Will a groomsman need help pinning his boutonnière?", "Getting Ready"],
+  ["Will there be an emergency dress fix — sewing, stain, or broken strap?", "Getting Ready"],
+  ["Will the groom cry at the first look or during the ceremony?", "First Look"],
+  ["Will BOTH the bride and groom cry at the first look?", "First Look"],
+  ["Will a phone go off during the ceremony?", "Ceremony"],
+  ["Will the officiant mispronounce a name?", "Ceremony"],
+  ["Will the ring bearer or flower girl go completely off-script?", "Ceremony"],
+  ["Will someone other than the couple cry during the vows?", "Ceremony"],
+  ["Will someone forget to sign the marriage license on the first pass?", "Ceremony"],
+  ["Will the veil get stepped on or fly into someone's face in portraits?", "Portraits"],
+  ["Will someone keep sunglasses on in a formal group photo?", "Portraits"],
+  ["Will golden-hour portraits get cut short by timeline or weather?", "Portraits"],
+  ["Will a groomsman ask “where do I put my hands?” in photos?", "Portraits"],
+  ["Will the best man's speech make the groom both laugh and cringe?", "Reception"],
+  ["Will an uncle be the first one on the dance floor?", "Reception"],
+  ["Will the bouquet toss turn genuinely competitive?", "Reception"],
+  ["Will cake end up on someone's face?", "Reception"],
+  ["Will a guest request a line dance?", "Reception"],
+  ["Will the grand exit need a second take?", "Reception"]
+];
+
+/* ================= STATE ================= */
+const LS_KEY = "weddingbets_identity_v1";
+let room = null;        // rooms row
+let me = null;          // my players row
+let players = [];       // all players in room
+let props = [];         // all props in room
+let picks = [];         // all picks in room
+let sel = {};           // propId -> {choice, stake} my unsaved/working selection
+let channel = null;
+let refreshTimer = null;
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function toast(msg, isErr) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (isErr ? " err" : "");
+  clearTimeout(t._h);
+  t._h = setTimeout(() => { t.className = "toast"; }, 3200);
+}
+
+function showView(name) {
+  ["view-loading", "view-landing", "view-room"].forEach((v) => $(v).classList.add("hidden"));
+  $("view-" + name).classList.remove("hidden");
+}
+
+function genCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I confusion
+  let code = "";
+  for (let i = 0; i < 6; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return code;
+}
+
+function saveIdentity() {
+  if (room && me) localStorage.setItem(LS_KEY, JSON.stringify({ roomCode: room.code, playerId: me.id }));
+}
+function loadIdentity() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || "null"); } catch { return null; }
+}
+function clearIdentity() { localStorage.removeItem(LS_KEY); }
+
+/* ================= SCORING ================= */
+function playerPoints(playerId) {
+  let pts = 100;
+  for (const p of props) {
+    if (p.outcome === null || p.outcome === undefined) continue;
+    const pick = picks.find((k) => k.prop_id === p.id && k.player_id === playerId);
+    if (!pick) continue;
+    pts += (pick.choice === p.outcome) ? pick.stake : -pick.stake;
+  }
+  return pts;
+}
+function anySettled() { return props.some((p) => p.outcome !== null && p.outcome !== undefined); }
+
+/* ================= DATA ================= */
+async function fetchRoomData() {
+  const [pl, pr, pk] = await Promise.all([
+    sb.from("players").select("*").eq("room_id", room.id).order("created_at", { ascending: true }),
+    sb.from("props").select("*").eq("room_id", room.id).order("created_at", { ascending: true }),
+    sb.from("picks").select("*").eq("room_id", room.id)
+  ]);
+  if (pl.error) throw pl.error;
+  if (pr.error) throw pr.error;
+  if (pk.error) throw pk.error;
+  players = pl.data || [];
+  props = pr.data || [];
+  picks = pk.data || [];
+  const freshMe = players.find((p) => p.id === me.id);
+  if (freshMe) me = freshMe;
+}
+
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(async () => {
+    if (!room || !me) return;
+    try {
+      await fetchRoomData();
+      renderRoom(true);
+    } catch (e) { /* transient — next event or visibility change will retry */ }
+  }, 150);
+}
+
+function subscribeRealtime() {
+  if (channel) { sb.removeChannel(channel); channel = null; }
+  channel = sb.channel("room-" + room.id);
+  const tables = ["players", "props", "picks"];
+  for (const t of tables) {
+    channel.on("postgres_changes",
+      { event: "*", schema: "public", table: t, filter: "room_id=eq." + room.id },
+      scheduleRefresh);
+  }
+  channel.on("postgres_changes",
+    { event: "*", schema: "public", table: "rooms", filter: "id=eq." + room.id },
+    async (payload) => {
+      if (payload.new && payload.new.title) room.title = payload.new.title;
+      scheduleRefresh();
+    });
+  channel.subscribe();
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && room && me) scheduleRefresh();
+});
+
+/* ================= RENDERING ================= */
+function myPick(propId) { return picks.find((k) => k.prop_id === propId && k.player_id === me.id) || null; }
+
+function getSel(prop) {
+  if (!sel[prop.id]) {
+    const existing = myPick(prop.id);
+    sel[prop.id] = existing
+      ? { choice: existing.choice, stake: existing.stake }
+      : { choice: true, stake: 10 };
+  }
+  return sel[prop.id];
+}
+
+function sideList(prop, choiceVal) {
+  const list = picks.filter((k) => k.prop_id === prop.id && k.choice === choiceVal);
+  if (!list.length) return '<span class="empty">No takers yet</span>';
+  return list.map((k) => {
+    const pl = players.find((p) => p.id === k.player_id);
+    const name = pl ? esc(pl.name) : "Someone";
+    let delta = "";
+    if (prop.outcome !== null && prop.outcome !== undefined) {
+      delta = (k.choice === prop.outcome)
+        ? ' <span class="delta-win">+' + k.stake + "</span>"
+        : ' <span class="delta-lose">−' + k.stake + "</span>";
+    }
+    const mine = me && k.player_id === me.id ? " (you)" : "";
+    return name + mine + ' <span class="stake">· ' + k.stake + " pts</span>" + delta;
+  }).join("<br>");
+}
+
+function renderProp(prop) {
+  const settled = prop.outcome !== null && prop.outcome !== undefined;
+  const s = getSel(prop);
+  const existing = myPick(prop.id);
+  const dirty = !existing || existing.choice !== s.choice || existing.stake !== s.stake;
+
+  let html = '<div class="card" data-prop="' + prop.id + '">';
+  html += '<p class="prop-q">' + esc(prop.label) + "</p>";
+
+  if (settled) {
+    html += prop.outcome
+      ? '<span class="outcome-badge outcome-yes">✅ It happened!</span>'
+      : '<span class="outcome-badge outcome-no">❌ It didn\'t happen</span>';
+  }
+
+  html += '<div class="sides">';
+  html += '<div class="side yes"><div class="side-label">Yes — it happens</div><div class="who">' + sideList(prop, true) + "</div></div>";
+  html += '<div class="side no"><div class="side-label">No — it won\'t</div><div class="who">' + sideList(prop, false) + "</div></div>";
+  html += "</div>";
+
+  if (!settled) {
+    html += '<div class="pick-controls">';
+    html += '<div class="pick-label">Your call' + (existing ? ' — saved, tap Save to change it' : "") + "</div>";
+    html += '<div class="toggle-row">';
+    html += '<button class="toggle-btn' + (s.choice === true ? " sel-yes" : "") + '" data-act="choice" data-prop="' + prop.id + '" data-val="true">👍 YES</button>';
+    html += '<button class="toggle-btn' + (s.choice === false ? " sel-no" : "") + '" data-act="choice" data-prop="' + prop.id + '" data-val="false">👎 NO</button>';
+    html += "</div>";
+    html += '<div class="stake-row">';
+    for (const st of [5, 10, 25]) {
+      html += '<button class="stake-btn' + (s.stake === st ? " sel" : "") + '" data-act="stake" data-prop="' + prop.id + '" data-val="' + st + '">' + st + " pts</button>";
+    }
+    html += "</div>";
+    html += '<button class="save-btn' + (!dirty && existing ? " saved" : "") + '" data-act="save" data-prop="' + prop.id + '">'
+      + (existing ? (dirty ? "💾 Save changes" : "✓ Pick saved") : "🎲 Lock it in")
+      + "</button>";
+    html += "</div>";
+  }
+
+  if (me.is_host) {
+    html += '<div class="host-zone"><div class="pick-label">👑 Host controls</div><div class="host-row">';
+    if (!settled) {
+      html += '<button class="btn-happened btn-small" data-act="settle" data-prop="' + prop.id + '" data-val="true">It happened</button>';
+      html += '<button class="btn-didnt btn-small" data-act="settle" data-prop="' + prop.id + '" data-val="false">It didn\'t</button>';
+    } else {
+      html += '<button class="btn-unsettle btn-small" data-act="unsettle" data-prop="' + prop.id + '">↩ Unsettle (clear result)</button>';
+    }
+    html += "</div></div>";
+  }
+
+  html += "</div>";
+  return html;
+}
+
+function renderRoom(preserveScroll) {
+  const y = preserveScroll ? window.scrollY : 0;
+  const standings = [...players]
+    .map((p) => ({ p, pts: playerPoints(p.id) }))
+    .sort((a, b) => b.pts - a.pts || a.p.name.localeCompare(b.p.name));
+  const settledCount = props.filter((p) => p.outcome !== null && p.outcome !== undefined).length;
+  const shareLink = location.origin + location.pathname + "?room=" + room.code;
+
+  let html = "";
+  /* Header */
+  html += '<div class="card room-head">';
+  html += '<p class="room-title">' + esc(room.title) + "</p>";
+  html += '<div class="big-code">' + esc(room.code) + "</div>";
+  html += '<div class="code-hint">Read the code aloud or share the link — guests join in seconds</div>';
+  html += '<div class="room-meta">👥 ' + players.length + (players.length === 1 ? " player" : " players")
+    + " · 🎯 " + settledCount + "/" + props.length + " moments settled</div>";
+  html += '<div style="margin-top:10px"><span class="me-chip">You\'re playing as <b>' + esc(me.name) + "</b>"
+    + (me.is_host ? " · 👑 Host" : "") + " · " + playerPoints(me.id) + " pts</span></div>";
+  html += '<div class="row-btns">';
+  html += '<button class="btn-ghost btn-small" data-act="copy-link" data-link="' + esc(shareLink) + '">🔗 Copy invite link</button>';
+  html += '<button class="btn-ghost btn-small" data-act="leave">🚪 Leave room</button>';
+  html += "</div></div>";
+
+  /* Standings */
+  html += '<div class="card"><h3>🏆 Standings</h3>';
+  if (!standings.length) {
+    html += '<p class="sub">Nobody here yet — read that code out loud!</p>';
+  }
+  standings.forEach((row, i) => {
+    const cls = row.pts > 100 ? "pts-up" : row.pts < 100 ? "pts-down" : "pts-flat";
+    const crown = (i === 0 && anySettled()) ? '<span class="crown">👑</span> ' : "";
+    html += '<div class="stand-row"><div class="stand-name">' + crown + esc(row.p.name)
+      + (row.p.is_host ? '<span class="host-tag">HOST</span>' : "")
+      + (me && row.p.id === me.id ? ' <span style="color:var(--dim)">(you)</span>' : "")
+      + '</div><div class="stand-pts ' + cls + '">' + row.pts + "</div></div>";
+  });
+  html += '<p class="sub" style="margin:8px 0 0">Everyone starts at 100. Win your stake when you call it right, lose it when you don\'t.</p></div>';
+
+  /* Props by category */
+  const cats = [...CATEGORY_ORDER];
+  for (const p of props) if (p.category && !cats.includes(p.category)) cats.push(p.category);
+  const noCat = props.filter((p) => !p.category);
+  for (const cat of cats) {
+    const inCat = props.filter((p) => p.category === cat);
+    if (!inCat.length) continue;
+    html += '<div class="cat-title">' + esc(cat) + "</div>";
+    for (const p of inCat) html += renderProp(p);
+  }
+  if (noCat.length) {
+    html += '<div class="cat-title">More moments</div>';
+    for (const p of noCat) html += renderProp(p);
+  }
+  if (!props.length) html += '<div class="card"><p class="sub" style="margin:0">No moments on the board yet.</p></div>';
+
+  /* Host: add custom prop */
+  if (me.is_host) {
+    html += '<div class="card"><h3>✨ Add a custom moment</h3>';
+    html += '<p class="sub">Spotted something bet-worthy that\'s not on the board? Add it live.</p>';
+    html += '<label class="f" for="custom-label">The moment</label>';
+    html += '<input type="text" id="custom-label" placeholder="e.g. Will the DJ play the wrong first-dance song?" maxlength="140">';
+    html += '<label class="f" for="custom-cat">Category</label>';
+    html += '<input type="text" id="custom-cat" list="cat-list" placeholder="Reception" maxlength="40">';
+    html += '<datalist id="cat-list">' + CATEGORY_ORDER.map((c) => "<option value=\"" + esc(c) + "\">").join("") + "</datalist>";
+    html += '<button class="btn-gold" data-act="add-prop">Add to the board →</button></div>';
+  }
+
+  html += '<p class="foot-note">Points are for glory. Glory is forever. 💅</p>';
+
+  $("view-room").innerHTML = html;
+  showView("room");
+  if (preserveScroll) window.scrollTo(0, y);
+}
+
+/* ================= ACTIONS ================= */
+async function savePick(propId) {
+  const s = sel[propId];
+  if (!s) return;
+  const { error } = await sb.from("picks").upsert(
+    { room_id: room.id, player_id: me.id, prop_id: propId, choice: s.choice, stake: s.stake },
+    { onConflict: "player_id,prop_id" }
+  );
+  if (error) { toast("Couldn't save that pick — try again.", true); return; }
+  toast("Pick locked in! 🎲");
+  scheduleRefresh();
+}
+
+async function settleProp(propId, outcome) {
+  const { error } = await sb.from("props").update({ outcome }).eq("id", propId);
+  if (error) { toast("Couldn't settle that — try again.", true); return; }
+  toast(outcome ? "It happened! Points are moving… 🎉" : "It didn't happen. Points are moving… 🎉");
+  scheduleRefresh();
+}
+
+async function unsettleProp(propId) {
+  const { error } = await sb.from("props").update({ outcome: null }).eq("id", propId);
+  if (error) { toast("Couldn't unsettle — try again.", true); return; }
+  toast("Result cleared — the moment is live again.");
+  scheduleRefresh();
+}
+
+async function addCustomProp() {
+  const labelEl = $("custom-label"), catEl = $("custom-cat");
+  const label = labelEl.value.trim();
+  if (!label) { toast("Give the moment a name first.", true); labelEl.focus(); return; }
+  const category = catEl.value.trim() || "Reception";
+  const { error } = await sb.from("props").insert({ room_id: room.id, label, category });
+  if (error) { toast("Couldn't add that moment — try again.", true); return; }
+  toast("New moment on the board! ✨");
+  scheduleRefresh();
+}
+
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-act]");
+  if (!btn) return;
+  const act = btn.dataset.act;
+  const propId = btn.dataset.prop;
+
+  if (act === "choice") {
+    const p = props.find((x) => x.id === propId); if (!p) return;
+    getSel(p).choice = btn.dataset.val === "true";
+    renderRoom(true);
+  } else if (act === "stake") {
+    const p = props.find((x) => x.id === propId); if (!p) return;
+    getSel(p).stake = parseInt(btn.dataset.val, 10);
+    renderRoom(true);
+  } else if (act === "save") {
+    savePick(propId);
+  } else if (act === "settle") {
+    settleProp(propId, btn.dataset.val === "true");
+  } else if (act === "unsettle") {
+    unsettleProp(propId);
+  } else if (act === "add-prop") {
+    addCustomProp();
+  } else if (act === "copy-link") {
+    const link = btn.dataset.link;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(
+        () => toast("Invite link copied! 🔗"),
+        () => toast("Copy failed — the code above works too.", true)
+      );
+    } else {
+      toast("Share code " + room.code + " — that's all they need!");
+    }
+  } else if (act === "leave") {
+    if (confirm("Leave this room? You can rejoin with the code, but you'll come back as a new player.")) {
+      clearIdentity();
+      if (channel) { sb.removeChannel(channel); channel = null; }
+      room = null; me = null; players = []; props = []; picks = []; sel = {};
+      location.href = location.pathname; // drop ?room param
+    }
+  }
+});
+
+/* ================= CREATE / JOIN / ENTER ================= */
+async function enterRoom(roomRow, playerRow) {
+  room = roomRow; me = playerRow;
+  sel = {};
+  saveIdentity();
+  await fetchRoomData();
+  renderRoom(false);
+  subscribeRealtime();
+}
+
+$("btn-create").addEventListener("click", async () => {
+  const title = $("create-title").value.trim();
+  const name = $("create-name").value.trim();
+  if (!title) { toast("Give your wedding game a title first.", true); $("create-title").focus(); return; }
+  if (!name) { toast("Add your name so the board knows you.", true); $("create-name").focus(); return; }
+  const btn = $("btn-create");
+  btn.disabled = true; btn.textContent = "Dealing you in…";
+  try {
+    let roomRow = null, lastErr = null;
+    for (let attempt = 0; attempt < 5 && !roomRow; attempt++) {
+      const res = await sb.from("rooms").insert({ code: genCode(), title }).select().single();
+      if (!res.error) roomRow = res.data;
+      else if (res.error.code !== "23505") { lastErr = res.error; break; } // 23505 = code collision, retry
+    }
+    if (!roomRow) throw lastErr || new Error("code collision");
+
+    const pRes = await sb.from("players").insert({ room_id: roomRow.id, name, is_host: true }).select().single();
+    if (pRes.error) throw pRes.error;
+
+    const propRows = STANDARD_PROPS.map(([label, category]) => ({ room_id: roomRow.id, label, category }));
+    const prRes = await sb.from("props").insert(propRows);
+    if (prRes.error) throw prRes.error;
+
+    await enterRoom(roomRow, pRes.data);
+    toast("Room created! Share code " + roomRow.code + " 🎉");
+  } catch (e) {
+    toast("Something went wrong creating the room — check your connection and try again.", true);
+    btn.disabled = false; btn.textContent = "Create room & deal me in →";
+  }
+});
+
+$("btn-join").addEventListener("click", async () => {
+  const code = $("join-code").value.trim().toUpperCase();
+  const name = $("join-name").value.trim();
+  if (code.length !== 6) { toast("That code should be 6 characters.", true); $("join-code").focus(); return; }
+  if (!name) { toast("Add your name so the board knows you.", true); $("join-name").focus(); return; }
+  const btn = $("btn-join");
+  btn.disabled = true; btn.textContent = "Joining…";
+  try {
+    const rRes = await sb.from("rooms").select("*").eq("code", code).maybeSingle();
+    if (rRes.error) throw rRes.error;
+    if (!rRes.data) {
+      toast("Hmm — no room with code " + code + ". Double-check it with the host.", true);
+      btn.disabled = false; btn.textContent = "Join room →";
+      return;
+    }
+    const pRes = await sb.from("players").insert({ room_id: rRes.data.id, name, is_host: false }).select().single();
+    if (pRes.error) throw pRes.error;
+    await enterRoom(rRes.data, pRes.data);
+    toast("You're in! Place your bets 🎲");
+  } catch (e) {
+    toast("Something went wrong joining — check your connection and try again.", true);
+    btn.disabled = false; btn.textContent = "Join room →";
+  }
+});
+
+/* Prefill join code from ?room=CODE invite links */
+(function prefillFromUrl() {
+  const q = new URLSearchParams(location.search).get("room");
+  if (q) {
+    $("join-code").value = q.trim().toUpperCase().slice(0, 6);
+    setTimeout(() => $("join-name").focus(), 300);
+  }
+})();
+
+/* ================= BOOT / REJOIN ================= */
+(async function boot() {
+  const saved = loadIdentity();
+  if (!saved || !saved.roomCode || !saved.playerId) { showView("landing"); return; }
+  try {
+    const rRes = await sb.from("rooms").select("*").eq("code", saved.roomCode).maybeSingle();
+    if (rRes.error) throw rRes.error;
+    if (!rRes.data) { clearIdentity(); showView("landing"); return; }
+    const pRes = await sb.from("players").select("*").eq("id", saved.playerId).eq("room_id", rRes.data.id).maybeSingle();
+    if (pRes.error) throw pRes.error;
+    if (!pRes.data) { clearIdentity(); showView("landing"); return; }
+    await enterRoom(rRes.data, pRes.data);
+  } catch (e) {
+    // Offline or project paused — fall back to the landing screen rather than a dead end.
+    showView("landing");
+  }
+})();
+</script>
+</body>
+</html>
