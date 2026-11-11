@@ -140,6 +140,24 @@
     background:rgba(245,196,81,.1);color:var(--gold2);border:1px dashed var(--gold);margin-top:4px;
   }
 
+  /* Referee join (landing) */
+  .ref-note{
+    background:rgba(94,234,212,.1);border:1px solid var(--mint);color:var(--mint);
+    border-radius:12px;padding:10px 12px;font-size:.88rem;font-weight:700;margin:0 0 4px;
+  }
+  .ref-toggle{
+    background:none;border:none;box-shadow:none;color:var(--dim);border-radius:0;
+    font-size:.85rem;font-weight:600;padding:10px 2px 0;cursor:pointer;text-decoration:underline;
+  }
+  #join-ref{letter-spacing:.22em;font-size:1.1rem}
+
+  /* Referee access block (host) */
+  .ref-code{
+    font-size:1.7rem;font-weight:900;letter-spacing:.28em;padding-left:.28em;color:var(--mint);
+    text-align:center;margin:10px 0 0;text-shadow:0 2px 14px rgba(94,234,212,.3);
+  }
+  .host-tag.ref-tag{color:var(--mint)}
+
   /* Betting deadlines panel (host) */
   .deadline-row{border-top:1px dashed var(--line);padding:12px 0 4px}
   .deadline-row:first-of-type{border-top:none;padding-top:4px}
@@ -243,11 +261,18 @@
     <div class="card">
       <h2>🎟️ Join a room</h2>
       <p class="sub">Got a 6-letter code from the host? Jump in.</p>
+      <div class="ref-note hidden" id="join-ref-note">🏅 Joining as referee — you'll help run this game: settle moments &amp; set deadlines.</div>
       <label class="f" for="join-code">Room code</label>
       <input type="text" id="join-code" class="code" placeholder="ABC123" maxlength="6" autocomplete="off">
       <label class="f" for="join-name">Your name</label>
       <input type="text" id="join-name" placeholder="e.g. Lauren" maxlength="30">
       <button class="btn-pink" id="btn-join">Join room →</button>
+      <button type="button" class="ref-toggle" id="ref-toggle-btn" data-act="toggle-ref">Joining as the referee? Enter the referee code ▸</button>
+      <div id="ref-fields" class="hidden">
+        <label class="f" for="join-ref">Referee code</label>
+        <input type="text" id="join-ref" class="code" placeholder="8-LETTER" maxlength="8" autocomplete="off">
+        <p class="sub" style="margin-top:8px">Referees join with full host powers — settle moments, set deadlines. 🏅</p>
+      </div>
     </div>
     <p class="foot-note">Everyone starts with 100 points. Stakes are 5, 10 or 25. Loser buys the next round. 🍻</p>
   </div>
@@ -275,6 +300,16 @@
   <div class="row-btns">
     <button class="btn-ghost" data-act="leave-cancel" style="padding-left:26px;padding-right:26px">Stay</button>
     <button class="btn-pink" data-act="leave-confirm" style="width:auto;padding-left:26px;padding-right:26px">Leave room</button>
+  </div>
+</div>
+
+<!-- REGENERATE REFEREE CODE CONFIRM (same in-app modal pattern as leave) -->
+<div id="ref-overlay" class="qr-overlay hidden">
+  <p class="ov-title">Regenerate referee code? 🏅</p>
+  <p class="ov-sub">The old code stops working right away.<br>Anyone already in as referee keeps their seat.</p>
+  <div class="row-btns">
+    <button class="btn-ghost" data-act="ref-cancel" style="padding-left:26px;padding-right:26px">Keep old code</button>
+    <button class="btn-pink" data-act="ref-regen-confirm" style="width:auto;padding-left:26px;padding-right:26px">Regenerate</button>
   </div>
 </div>
 
@@ -346,6 +381,13 @@ function genCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I confusion
   let code = "";
   for (let i = 0; i < 6; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+  return code;
+}
+
+function genRefCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // same unambiguous alphabet as room codes
+  let code = "";
+  for (let i = 0; i < 8; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
   return code;
 }
 
@@ -461,6 +503,7 @@ function subscribeRealtime() {
     { event: "*", schema: "public", table: "rooms", filter: "id=eq." + room.id },
     async (payload) => {
       if (payload.new && payload.new.title) room.title = payload.new.title;
+      if (payload.new && "ref_code" in payload.new) room.ref_code = payload.new.ref_code;
       scheduleRefresh();
     });
   channel.subscribe();
@@ -512,6 +555,15 @@ function sideList(prop, choiceVal) {
     const mine = me && k.player_id === me.id ? " (you)" : "";
     return name + mine + ' <span class="stake">· ' + k.stake + " pts</span>" + delta;
   }).join("<br>");
+}
+
+/* Role badge for a player: referees (is_referee) get 🏅 REFEREE, the room creator
+   gets the plain HOST tag, guests get nothing. Referee wins when both flags are set. */
+function roleTag(p) {
+  if (!p) return "";
+  if (p.is_referee) return '<span class="host-tag ref-tag">🏅 REFEREE</span>';
+  if (p.is_host) return '<span class="host-tag">HOST</span>';
+  return "";
 }
 
 function renderProp(prop) {
@@ -575,6 +627,33 @@ function renderProp(prop) {
   return html;
 }
 
+/* ================= REFEREE ACCESS (host only) =================
+   SECURITY NOTE: this block — the only place the room's ref_code is ever displayed —
+   renders exclusively for host players (is_host), never for guests.
+   KNOWN LIMITATION, accepted by design: every client fetches the full room row over
+   the anon key with open RLS, so a determined guest could read ref_code straight
+   from the raw API response even though the UI never shows it to them. Wedding Bets
+   is an honor-system party game, so the referee code is a convenience gate, not a
+   vault lock — and the host can regenerate it the moment it leaks. */
+function renderRefBlock() {
+  let html = '<div class="card"><h3>🏅 Referee access</h3>';
+  html += '<p class="sub">Hand the game to someone you trust — best man, maid of honor, planner. Whoever joins with this code or link can run the game for you: settle moments and set deadlines.</p>';
+  if (room.ref_code) {
+    const refLink = location.origin + location.pathname + "?room=" + room.code + "&ref=" + room.ref_code;
+    html += '<div class="ref-code">' + esc(room.ref_code) + "</div>";
+    html += '<div class="code-hint" style="text-align:center">Referee code — keep it between you and your referee</div>';
+    html += '<div class="row-btns">';
+    html += '<button class="btn-ghost btn-small" data-act="copy-ref-link" data-link="' + esc(refLink) + '">🔗 Copy referee link</button>';
+    html += '<button class="btn-ghost btn-small" data-act="regen-ref">♻️ Regenerate code</button>';
+    html += "</div>";
+  } else {
+    html += '<p class="sub">This room doesn\'t have a referee code yet.</p>';
+    html += '<button class="btn-gold" data-act="gen-ref">Generate referee code →</button>';
+  }
+  html += "</div>";
+  return html;
+}
+
 function renderRoom(preserveScroll) {
   const y = preserveScroll ? window.scrollY : 0;
   const standings = [...players]
@@ -595,7 +674,7 @@ function renderRoom(preserveScroll) {
   html += '<div class="room-meta">👥 ' + players.length + (players.length === 1 ? " player" : " players")
     + " · 🎯 " + settledCount + "/" + props.length + " moments settled</div>";
   html += '<div style="margin-top:10px"><span class="me-chip">You\'re playing as <b>' + esc(me.name) + "</b>"
-    + (me.is_host ? " · 👑 Host" : "") + " · " + playerPoints(me.id) + " pts</span></div>";
+    + (me.is_referee ? " · 🏅 Referee" : me.is_host ? " · 👑 Host" : "") + " · " + playerPoints(me.id) + " pts</span></div>";
   html += '<div class="row-btns">';
   html += '<button class="btn-ghost btn-small" data-act="copy-link" data-link="' + esc(shareLink) + '">🔗 Copy invite link</button>';
   html += '<button class="btn-ghost btn-small" data-act="leave">🚪 Leave room</button>';
@@ -625,6 +704,9 @@ function renderRoom(preserveScroll) {
     html += "</div>";
   }
 
+  /* Host: referee access */
+  if (me.is_host) html += renderRefBlock();
+
   /* Standings */
   html += '<div class="card"><h3>🏆 Standings</h3>';
   if (!standings.length) {
@@ -634,7 +716,7 @@ function renderRoom(preserveScroll) {
     const cls = row.pts > 100 ? "pts-up" : row.pts < 100 ? "pts-down" : "pts-flat";
     const crown = (i === 0 && anySettled()) ? '<span class="crown">👑</span> ' : "";
     html += '<div class="stand-row"><div class="stand-name">' + crown + esc(row.p.name)
-      + (row.p.is_host ? '<span class="host-tag">HOST</span>' : "")
+      + roleTag(row.p)
       + (me && row.p.id === me.id ? ' <span style="color:var(--dim)">(you)</span>' : "")
       + '</div><div class="stand-pts ' + cls + '">' + row.pts + "</div></div>";
   });
@@ -733,7 +815,7 @@ function renderStats() {
   for (const r of st.perPlayer) {
     const netCls = r.net > 0 ? "pts-up" : r.net < 0 ? "pts-down" : "pts-flat";
     html += '<div class="pstat-row"><div class="pstat-name">' + esc(r.pl.name)
-      + (r.pl.is_host ? '<span class="host-tag">HOST</span>' : "")
+      + roleTag(r.pl)
       + '</div><div class="pstat-nums">'
       + r.made + " picks · " + r.wins + "W–" + r.losses + "L · "
       + (r.winPct === null ? "—" : r.winPct + "%")
@@ -761,7 +843,7 @@ function renderStats() {
     } else {
       result = '<span class="log-open">open</span>';
     }
-    html += '<div class="log-row"><div class="log-main"><b>' + name + "</b> · "
+    html += '<div class="log-row"><div class="log-main"><b>' + name + "</b>" + roleTag(pl) + " · "
       + (k.choice ? "👍 Yes" : "👎 No")
       + ' <span class="stake">· ' + k.stake + " pts</span>"
       + '<br><span class="log-prop">' + esc(label) + "</span></div>"
@@ -851,8 +933,26 @@ function doLeave() {
   location.replace(location.pathname);
 }
 
+/* ================= REFEREE CODE ACTIONS (host) ================= */
+function openRefConfirm() { $("ref-overlay").classList.remove("hidden"); }
+function closeRefConfirm() { $("ref-overlay").classList.add("hidden"); }
+
+/* Generate (first time) or regenerate (replace) the room's referee code.
+   Regeneration invalidates the old code for NEW joins immediately — referees
+   already in the room keep their player row and their host powers. */
+async function setNewRefCode(isRegen) {
+  const code = genRefCode();
+  const { error } = await sb.from("rooms").update({ ref_code: code }).eq("id", room.id);
+  if (error) { toast("Couldn't save the referee code — try again.", true); return; }
+  room.ref_code = code;
+  toast(isRegen
+    ? "New referee code! The old one no longer works. 🏅"
+    : "Referee code ready! 🏅 Share the referee link with your game-runner.");
+  renderRoom(true);
+}
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { closeQR(); closeLeave(); }
+  if (e.key === "Escape") { closeQR(); closeLeave(); closeRefConfirm(); }
 });
 
 /* ================= ACTIONS ================= */
@@ -1012,6 +1112,31 @@ document.addEventListener("click", (e) => {
     closeLeave();
   } else if (act === "leave-confirm") {
     doLeave();
+  } else if (act === "toggle-ref") {
+    const fields = $("ref-fields");
+    const opening = fields.classList.contains("hidden");
+    fields.classList.toggle("hidden");
+    btn.textContent = "Joining as the referee? Enter the referee code " + (opening ? "▾" : "▸");
+    if (opening) setTimeout(() => $("join-ref").focus(), 60);
+  } else if (act === "copy-ref-link") {
+    const link = btn.dataset.link;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(
+        () => toast("Referee link copied! 🏅"),
+        () => toast("Copy failed — read them the code from the panel instead.", true)
+      );
+    } else {
+      toast("Copy isn't available here — the code's right there in the panel.");
+    }
+  } else if (act === "gen-ref") {
+    setNewRefCode(false);
+  } else if (act === "regen-ref") {
+    openRefConfirm();
+  } else if (act === "ref-cancel") {
+    closeRefConfirm();
+  } else if (act === "ref-regen-confirm") {
+    closeRefConfirm();
+    setNewRefCode(true);
   }
 });
 
@@ -1035,9 +1160,19 @@ $("btn-create").addEventListener("click", async () => {
   try {
     let roomRow = null, lastErr = null;
     for (let attempt = 0; attempt < 5 && !roomRow; attempt++) {
-      const res = await sb.from("rooms").insert({ code: genCode(), title }).select().single();
+      const payload = { code: genCode(), title, ref_code: genRefCode() };
+      const res = await sb.from("rooms").insert(payload).select().single();
       if (!res.error) roomRow = res.data;
-      else if (res.error.code !== "23505") { lastErr = res.error; break; } // 23505 = code collision, retry
+      else if (res.error.code === "23505") { /* code collision — retry with a fresh code */ }
+      else if (String(res.error.message || "").indexOf("ref_code") !== -1) {
+        /* ref_code column not live yet — create the room without one; the host can
+           generate a referee code from the room once the column exists. */
+        const res2 = await sb.from("rooms").insert({ code: payload.code, title }).select().single();
+        if (!res2.error) roomRow = res2.data;
+        else { lastErr = res2.error; }
+        break;
+      }
+      else { lastErr = res.error; break; }
     }
     if (!roomRow) throw lastErr || new Error("code collision");
 
@@ -1071,22 +1206,48 @@ $("btn-join").addEventListener("click", async () => {
       btn.disabled = false; btn.textContent = "Join room →";
       return;
     }
-    const pRes = await sb.from("players").insert({ room_id: rRes.data.id, name, is_host: false }).select().single();
+    /* Referee join? A ref code in the form (typed in, or prefilled by a referee
+       link) must match the room's stored ref_code exactly — no match, no join. */
+    const refAttempt = ($("join-ref").value || "").trim().toUpperCase();
+    let joinAsReferee = false;
+    if (refAttempt) {
+      const stored = rRes.data.ref_code ? String(rRes.data.ref_code).trim().toUpperCase() : "";
+      if (!stored || refAttempt !== stored) {
+        toast("That referee code doesn't match this room 🏅", true);
+        btn.disabled = false; btn.textContent = "Join room →";
+        return;
+      }
+      joinAsReferee = true;
+    }
+    const pRes = await sb.from("players").insert(
+      joinAsReferee
+        ? { room_id: rRes.data.id, name, is_host: true, is_referee: true }
+        : { room_id: rRes.data.id, name, is_host: false }
+    ).select().single();
     if (pRes.error) throw pRes.error;
     await enterRoom(rRes.data, pRes.data);
-    toast("You're in! Place your bets 🎲");
+    toast(joinAsReferee ? "You're in as referee! 🏅 Settle those moments." : "You're in! Place your bets 🎲");
   } catch (e) {
     toast("Something went wrong joining — check your connection and try again.", true);
     btn.disabled = false; btn.textContent = "Join room →";
   }
 });
 
-/* Prefill join code from ?room=CODE invite links */
+/* Prefill join code from ?room=CODE invite links; a referee link adds &ref=REFCODE,
+   which flips the join form into referee mode (note shown, ref field open + filled). */
 (function prefillFromUrl() {
-  const q = new URLSearchParams(location.search).get("room");
+  const params = new URLSearchParams(location.search);
+  const q = params.get("room");
   if (q) {
     $("join-code").value = q.trim().toUpperCase().slice(0, 6);
     setTimeout(() => $("join-name").focus(), 300);
+  }
+  const ref = (params.get("ref") || "").trim().toUpperCase().slice(0, 8);
+  if (ref) {
+    $("join-ref").value = ref;
+    $("ref-fields").classList.remove("hidden");
+    $("join-ref-note").classList.remove("hidden");
+    $("ref-toggle-btn").textContent = "Joining as the referee? Enter the referee code ▾";
   }
 })();
 

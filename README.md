@@ -25,6 +25,11 @@ Supabase project **"wedding bets"** (ref `etojeszmiwfgncokrsay`):
   The `picks` table's INSERT/UPDATE policies reject writes for a prop whose
   `locks_at` is in the past — that's the real enforcement; the app mirrors the
   lock state in its UI and handles a rejection gracefully.
+- `rooms.ref_code` (nullable text) is the room's 8-character referee code, and
+  `players.is_referee` flags players who joined with it. Both were added after
+  the original schema; the app degrades gracefully if they're absent (room
+  creation falls back to no ref code, and the host panel offers a "Generate"
+  button for rooms that don't have one yet).
 
 ## Deploy (Netlify)
 
@@ -64,6 +69,26 @@ Supabase project **"wedding bets"** (ref `etojeszmiwfgncokrsay`):
   showdowns), a per-player table (picks, W–L, win %, net points, current
   points), and a full bet log — every pick, newest first, with side, stake,
   time placed, and its result once settled.
+- **Referee access (host):** Every room gets a second secret besides the
+  guest code: an 8-character **referee code**, shown only in the host-only
+  "🏅 Referee access" panel (with a copyable **referee link**,
+  `?room=CODE&ref=REFCODE`). Hand it to a designated game-runner — best man,
+  maid of honor, planner — and they join with full host powers (settle
+  moments, set deadlines, see the log & stats, regenerate the code) without
+  needing the room creator's phone. Referees can also join manually: the join
+  form has a "Joining as the referee?" expander with its own ref-code field.
+  A referee link flips the join form into a visible "🏅 Joining as referee"
+  mode. Validation is exact-match against the room's stored `ref_code` — a
+  wrong code gets a clear error and no join. Referee players carry
+  `is_host=true` and `is_referee=true` and show a 🏅 REFEREE badge in the
+  standings and bet log (the creator shows 👑 HOST). **Regenerate code**
+  (behind an in-app confirm) writes a fresh code that invalidates the old one
+  for new joins immediately; referees already in the room keep their seats.
+  Security note: the UI never renders the ref code for non-hosts, but with
+  the anon key and open RLS every client fetches the full room row, so a
+  determined guest could read it from the raw API response. That's accepted
+  by design — this is an honor-system party game, and regenerating is the
+  remedy if a code leaks.
 - Identity is kept in the browser (localStorage), so a refresh drops you
   right back into your seat. **Leave room** fully clears that saved seat (via
   an in-app confirm — native `confirm()` dialogs can be auto-dismissed or
