@@ -309,6 +309,51 @@
   .scr-winner-pts{font-size:clamp(1.5rem,4vw,2.8rem);font-weight:800;color:var(--ink)}
   .scr-top5{width:min(680px,92vw);margin-top:34px;text-align:left}
   .scr-loading{margin:auto;text-align:center;color:var(--dim);font-size:1.2rem}
+  /* Interactive big screen: guests can tap around (browse only — betting
+     still happens on their own phones via the join QR). */
+  .scr-tabs{display:flex;gap:14px;justify-content:center;margin:20px auto 0;flex-wrap:wrap}
+  .scr-tab{
+    font:inherit;font-weight:900;letter-spacing:.06em;cursor:pointer;
+    font-size:clamp(1.05rem,2.2vw,1.5rem);color:var(--ink);
+    background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--line);border-radius:999px;padding:14px 30px;min-height:60px;
+  }
+  .scr-tab.active{border-color:var(--gold);color:var(--gold2);box-shadow:0 0 0 1px var(--gold),0 8px 26px rgba(245,196,81,.25)}
+  .scr-hint{color:var(--dim);font-size:clamp(.9rem,1.7vw,1.2rem);font-weight:600;margin:-6px 0 12px}
+  .scr-row.tappable{cursor:pointer}
+  .scr-chev{color:var(--dim);font-size:clamp(1.2rem,2.4vw,1.8rem);font-weight:900}
+  .scr-moments{max-width:1060px;width:100%;margin:8px auto 0}
+  .scr-moment{
+    display:flex;align-items:center;gap:16px;padding:13px 18px;margin-bottom:9px;
+    background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:14px;
+  }
+  .scr-moment .m-label{flex:1;font-weight:700;font-size:clamp(1.05rem,2.1vw,1.5rem);line-height:1.25}
+  .scr-moment .m-win{display:block;color:var(--dim);font-weight:600;font-size:.82em;margin-top:2px}
+  .scr-moment .m-win b{color:var(--gold2)}
+  .scr-chip{font-weight:900;font-size:clamp(.85rem,1.7vw,1.15rem);white-space:nowrap;padding:7px 13px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .scr-chip.yes{color:#0e2a16;background:linear-gradient(180deg,#8df0a4,#4ade80);border-color:transparent}
+  .scr-chip.no{color:#2a0e16;background:linear-gradient(180deg,#fda4af,#fb7185);border-color:transparent}
+  .scr-chip.locked{color:var(--gold2);border-color:var(--gold)}
+  .scr-player-head{text-align:center;margin-top:10px}
+  .scr-player-name{font-size:clamp(2.2rem,6vw,4rem);font-weight:900;color:var(--gold2);line-height:1.05;word-break:break-word}
+  .scr-player-sub{color:var(--dim);font-weight:700;font-size:clamp(1rem,2vw,1.4rem);margin-top:4px}
+  .scr-picks{max-width:900px;width:100%;margin:24px auto 0;text-align:left}
+  .scr-pick{display:flex;align-items:center;gap:14px;padding:11px 16px;margin-bottom:8px;background:#1a0d30;border:1px solid var(--line);border-radius:12px}
+  .scr-pick .p-label{flex:1;font-weight:600;font-size:clamp(.98rem,1.9vw,1.3rem);line-height:1.3}
+  .scr-pick .p-bet{font-weight:800;white-space:nowrap;font-size:clamp(.9rem,1.8vw,1.2rem)}
+  .scr-pick .p-res{font-weight:900;white-space:nowrap;font-size:clamp(.95rem,1.9vw,1.3rem)}
+  .scr-pick .p-res.win{color:#4ade80}
+  .scr-pick .p-res.lose{color:#fb7185}
+  .scr-pick .p-res.pend{color:var(--dim)}
+  .scr-back{
+    display:block;margin:26px auto 0;font:inherit;font-weight:900;cursor:pointer;
+    font-size:clamp(1.05rem,2.2vw,1.45rem);color:var(--gold2);
+    background:transparent;border:1px solid var(--gold);border-radius:999px;padding:13px 32px;min-height:58px;
+  }
+  .scr-join-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%}
+  .scr-qr.big{width:min(88vw,430px)}
+  .scr-qr.big svg,.scr-qr.big img{max-width:390px}
+  .scr-join-msg{font-size:clamp(1.3rem,3vw,2rem);font-weight:800;margin-top:20px;text-align:center;line-height:1.35}
   @media (max-aspect-ratio:1/1){
     .scr-main{grid-template-columns:1fr}
     #view-screen{padding:22px 16px 30px}
@@ -1420,12 +1465,40 @@ $("btn-join").addEventListener("click", async () => {
 })();
 
 /* ================= BIG-SCREEN / DJ DISPLAY (?screen=CODE) =================
-   A pure display: no identity, no localStorage, no controls of any kind. It
-   borrows the global room/players/props/picks state and the shared scoring
-   helpers, but `me` stays null the whole time, so none of the room-mode
-   machinery (saved-session refresh, lock ticker, pick state) ever engages. */
+   A display with browse-only taps: no identity, no localStorage, and no way
+   to bet, settle or change the game from the screen — guests tap around
+   (tabs, player cards) and join on their own phones via the QR. It borrows
+   the global room/players/props/picks state and the shared scoring helpers,
+   but `me` stays null the whole time, so none of the room-mode machinery
+   (saved-session refresh, lock ticker, pick state) ever engages. */
 let screenChannel = null;
 let screenTimer = null;
+/* Interactive browsing state (Tobias, Nov 12): guests can tap around the
+   iPad — switch tabs, open a player's bets — but the screen still can't bet
+   or settle; after ~45s of no touches it drifts back to the standings board. */
+let screenTab = "standings"; // standings | moments | join
+let screenPlayerId = null;
+let screenInteracted = false;
+let screenIdleTimer = null;
+const SCREEN_IDLE_MS = 45000;
+
+function armScreenIdle() {
+  clearTimeout(screenIdleTimer);
+  screenIdleTimer = setTimeout(() => {
+    if (screenTab !== "standings" || screenPlayerId || screenInteracted) {
+      screenTab = "standings"; screenPlayerId = null; screenInteracted = false;
+      renderScreen();
+    }
+  }, SCREEN_IDLE_MS);
+}
+
+function screenGo(tab, playerId) {
+  screenTab = tab;
+  screenPlayerId = playerId || null;
+  screenInteracted = true;
+  renderScreen();
+  armScreenIdle();
+}
 
 async function fetchScreenData() {
   const [pl, pr, pk] = await Promise.all([
@@ -1490,7 +1563,7 @@ function biggestWinner(prop) {
 
 function medal(i) { return ["🥇", "🥈", "🥉"][i] || String(i + 1); }
 
-function renderScreen() {
+function renderScreenHome() {
   const el = $("view-screen");
   const settled = props.filter((p) => p.outcome !== null && p.outcome !== undefined);
   const standings = screenStandings();
@@ -1498,6 +1571,7 @@ function renderScreen() {
 
   let html = '<div class="scr-brand">WEDDING BETS 🎲</div>';
   html += '<h1 class="scr-title">' + esc(room.title) + "</h1>";
+  html += screenTabsHtml();
 
   if (room.finished) {
     /* ---- Winner spotlight ---- */
@@ -1514,10 +1588,11 @@ function renderScreen() {
     if (standings.length) {
       html += '<div class="scr-top5"><div class="scr-sec-title">Final standings</div>';
       standings.slice(0, 5).forEach((row, i) => {
-        html += '<div class="scr-row' + (i === 0 ? " leader" : "") + '">'
+        html += '<div class="scr-row tappable' + (i === 0 ? " leader" : "") + '" data-scr="player" data-id="' + row.p.id + '">'
           + '<div class="scr-rank">' + medal(i) + "</div>"
           + '<div class="scr-name">' + esc(row.p.name) + "</div>"
-          + '<div class="scr-pts">' + row.pts + "</div></div>";
+          + '<div class="scr-pts">' + row.pts + "</div>"
+          + '<div class="scr-chev">›</div></div>';
       });
       html += "</div>";
     }
@@ -1531,16 +1606,18 @@ function renderScreen() {
   html += '<div class="scr-main">';
 
   html += '<div><div class="scr-sec-title">🏆 Standings</div>';
+  html += '<div class="scr-hint">👆 Tap a name to see their bets</div>';
   if (!standings.length) {
     html += '<div class="scr-empty">Waiting for the first players to join…</div>';
   }
-  standings.slice(0, 8).forEach((row, i) => {
-    html += '<div class="scr-row' + (i === 0 ? " leader" : "") + '">'
+  (screenInteracted ? standings : standings.slice(0, 8)).forEach((row, i) => {
+    html += '<div class="scr-row tappable' + (i === 0 ? " leader" : "") + '" data-scr="player" data-id="' + row.p.id + '">'
       + '<div class="scr-rank">' + medal(i) + "</div>"
       + '<div class="scr-name">' + esc(row.p.name)
       + (i === 0 && standings.length > 1 ? '<span class="scr-lead-tag">IN THE LEAD 👑</span>' : "")
       + "</div>"
-      + '<div class="scr-pts">' + row.pts + "</div></div>";
+      + '<div class="scr-pts">' + row.pts + "</div>"
+      + '<div class="scr-chev">›</div></div>';
   });
   html += "</div>";
 
@@ -1575,6 +1652,99 @@ function renderScreen() {
   el.innerHTML = html;
 }
 
+function screenTabsHtml() {
+  const tabs = [["standings", "🏆 Standings"], ["moments", "🎯 All the moments"]];
+  if (room && !room.finished) tabs.push(["join", "📷 Join the game"]);
+  const cur = screenPlayerId ? "standings" : screenTab;
+  return '<div class="scr-tabs">' + tabs.map(([k, label]) =>
+    '<button class="scr-tab' + (cur === k ? " active" : "") + '" data-scr="tab" data-tab="' + k + '">' + label + "</button>"
+  ).join("") + "</div>";
+}
+
+function screenHeadHtml() {
+  return '<div class="scr-brand">WEDDING BETS 🎲</div>'
+    + '<h1 class="scr-title">' + esc(room.title) + "</h1>"
+    + screenTabsHtml();
+}
+
+/* The renderScreen the realtime loop calls: routes to whichever view the
+   last tap selected, defaulting to the home board. */
+function renderScreen() {
+  if (!room) return;
+  if (screenPlayerId && players.some((p) => p.id === screenPlayerId)) { renderScreenPlayer(); return; }
+  screenPlayerId = null;
+  if (screenTab === "moments") { renderScreenMoments(); return; }
+  if (screenTab === "join" && !room.finished) { renderScreenJoin(); return; }
+  screenTab = "standings";
+  renderScreenHome();
+}
+
+function renderScreenPlayer() {
+  const el = $("view-screen");
+  const pl = players.find((p) => p.id === screenPlayerId);
+  if (!pl) { screenPlayerId = null; renderScreenHome(); return; }
+  const standings = screenStandings();
+  const rank = standings.findIndex((r) => r.p.id === pl.id) + 1;
+  let html = screenHeadHtml();
+  html += '<div class="scr-player-head"><div class="scr-player-name">' + esc(pl.name) + "</div>"
+    + '<div class="scr-player-sub">' + medal(rank - 1) + " #" + rank + " · " + playerPoints(pl.id) + " points</div></div>";
+  const myPicks = picks.filter((k) => k.player_id === pl.id);
+  html += '<div class="scr-picks">';
+  if (!myPicks.length) {
+    html += '<div class="scr-empty" style="text-align:center">No bets placed yet — scan the join code and get in the game!</div>';
+  }
+  for (const prop of props) {
+    const pick = myPicks.find((k) => k.prop_id === prop.id);
+    if (!pick) continue;
+    let res, cls;
+    if (prop.outcome === null || prop.outcome === undefined) { res = "⏳ Open"; cls = "pend"; }
+    else if (pick.choice === prop.outcome) { res = "+" + pick.stake; cls = "win"; }
+    else { res = "−" + pick.stake; cls = "lose"; }
+    html += '<div class="scr-pick"><div class="p-label">' + esc(prop.label) + "</div>"
+      + '<div class="p-bet">' + (pick.choice ? "YES" : "NO") + " · " + pick.stake + " pts</div>"
+      + '<div class="p-res ' + cls + '">' + res + "</div></div>";
+  }
+  html += "</div>";
+  html += '<button class="scr-back" data-scr="back">← Back to standings</button>';
+  el.innerHTML = html;
+}
+
+function renderScreenMoments() {
+  const el = $("view-screen");
+  let html = screenHeadHtml();
+  html += '<div class="scr-moments">';
+  for (const g of categoryGroups()) {
+    html += '<div class="scr-sec-title" style="margin-top:22px">' + esc(g.label) + "</div>";
+    for (const prop of g.list) {
+      let chip;
+      if (prop.outcome === true) chip = '<span class="scr-chip yes">✅ Happened</span>';
+      else if (prop.outcome === false) chip = '<span class="scr-chip no">❌ Didn\'t happen</span>';
+      else if (propLocked(prop)) chip = '<span class="scr-chip locked">🔒 Betting closed</span>';
+      else chip = '<span class="scr-chip">⏳ Still to come</span>';
+      let winLine = "";
+      if (prop.outcome !== null && prop.outcome !== undefined) {
+        const bw = biggestWinner(prop);
+        if (bw) winLine = '<span class="m-win">Biggest winner: <b>' + esc(bw.name) + " +" + bw.gain + "</b></span>";
+      }
+      html += '<div class="scr-moment"><div class="m-label">' + esc(prop.label) + winLine + "</div>" + chip + "</div>";
+    }
+  }
+  html += "</div>";
+  el.innerHTML = html;
+}
+
+function renderScreenJoin() {
+  const el = $("view-screen");
+  const svg = qrSvgString();
+  let html = screenHeadHtml();
+  html += '<div class="scr-join-wrap"><div class="scr-qr big">'
+    + (svg || '<div class="scr-qr-fallback">Join with the code below 👇</div>')
+    + '<div class="scr-qr-cap">📷 Scan to play</div>'
+    + '<div class="scr-qr-code">' + esc(room.code) + "</div></div>"
+    + '<div class="scr-join-msg">Point your phone camera at the code —<br>you\'ll be in the game in seconds 🎉</div></div>';
+  el.innerHTML = html;
+}
+
 async function initScreen(code) {
   document.querySelector(".wrap").classList.add("hidden");
   const el = $("view-screen");
@@ -1593,6 +1763,17 @@ async function initScreen(code) {
     await fetchScreenData();
     renderScreen();
     subscribeScreen();
+    /* Browse-only taps: tabs, player cards, back. Nothing here can bet,
+       settle or change the game — those stay on players' own phones. */
+    el.addEventListener("click", (ev) => {
+      const t = ev.target.closest("[data-scr]");
+      if (!t) { armScreenIdle(); return; }
+      const act = t.getAttribute("data-scr");
+      if (act === "tab") screenGo(t.getAttribute("data-tab"));
+      else if (act === "player") screenGo("standings", t.getAttribute("data-id"));
+      else if (act === "back") screenGo("standings");
+    });
+    armScreenIdle();
   } catch (e) {
     el.innerHTML = '<div class="scr-center"><div class="scr-brand">WEDDING BETS 🎲</div>'
       + '<div class="scr-big-msg" style="margin-top:14px">📡 Can\'t reach the game</div>'
